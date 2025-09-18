@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText:  Open Energy Transition gGmbH
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+
+# Rule to create region shapes using create_region_shapes.py
+rule create_region_shapes:
+    input:
+        country_shapes=resources("country_shapes.geojson"),
+        etys_boundary_lines="data/etys-boundary-gis-data-mar25/ETYS boundary GIS data Mar25.shp"
+    output:
+        raw_region_shapes=resources("raw_region_shapes.geojson")
+    log:
+        logs("raw_region_shapes.log")
+    resources:
+        mem_mb=8000,
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/gb-model/create_region_shapes.py"
+
+
+
