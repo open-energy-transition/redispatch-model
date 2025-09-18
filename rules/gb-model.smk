@@ -7,7 +7,7 @@
 rule create_region_shapes:
     input:
         country_shapes=resources("country_shapes.geojson"),
-        etys_boundary_lines="data/etys-boundary-gis-data-mar25/ETYS boundary GIS data Mar25.shp"
+        etys_boundary_lines="data/gb-model/etys-boundary-gis-data-mar25/ETYS boundary GIS data Mar25.shp"
     output:
         raw_region_shapes=resources("raw_region_shapes.geojson")
     log:
