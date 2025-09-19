@@ -20,4 +20,17 @@ rule create_region_shapes:
         "../scripts/gb-model/create_region_shapes.py"
 
 
-
+# Rule to manually merge raw_region_shapes
+rule manual_region_merger:
+    input:
+        raw_region_shapes=resources("raw_region_shapes.geojson"),
+    output:
+        merged_shapes=resources("merged_shapes.geojson"),
+    log:
+        logs("manual_region_merger.log")
+    resources:
+        mem_mb=8000,
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/gb-model/manual_region_merger.py"
