@@ -203,6 +203,22 @@ def create_regions_from_boundaries(country_shapes: gpd.GeoDataFrame, boundary_li
     # Create GeoDataFrame from regions
     if regions:
         regions_gdf = gpd.GeoDataFrame(regions, crs=country_shapes.crs)
+
+        # Calculate total area of regions
+        original_area = country_shapes.geometry.area.sum()
+        regions_area = regions_gdf.geometry.area.sum()
+        area_difference = abs(original_area - regions_area)
+        area_loss_percent = (area_difference / original_area) * 100 if original_area > 0 else 0
+
+        logger.debug(f"Area comparison:")
+        logger.debug(f"  Original area: {original_area / 1000000:.2f} km²")
+        logger.debug(f"  Regions area:  {regions_area / 1000000:.2f} km²")
+        logger.debug(f"  Difference:    {area_difference / 1000000:.2f} km² ({area_loss_percent:.3f}%)")
+
+        # raise exception if area loss is significant
+        if area_loss_percent > snakemake.config["area_loss_tolerance_percent"]:
+            raise ValueError(f"Significant area loss detected after splitting: {area_loss_percent:.3f}%")
+
         logger.debug(
             f"Successfully created {len(regions_gdf)} regions from {len(country_shapes)} original shapes"
         )

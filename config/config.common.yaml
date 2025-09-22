@@ -4,3 +4,4 @@
 
 
 target_crs: "EPSG:27700"
+area_loss_tolerance_percent: 0.01 # percentage of area loss tolerated when splitting regions
