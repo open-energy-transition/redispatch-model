@@ -3,6 +3,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 
+configfile: "config/config.common.yaml"
+
+
 # Rule to create region shapes using create_region_shapes.py
 rule create_region_shapes:
     input:
