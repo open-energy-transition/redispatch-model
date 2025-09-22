@@ -309,8 +309,8 @@ if __name__ == "__main__":
         )
         logger.debug(f"- Average area: {regions.geometry.area.mean() / 1000000:.1f} km²")
 
-    # Clean regions with appropriate threshold (1 km²)
-    min_area = 1000000  # 1 km² in square meters
+    # Clean regions with appropriate threshold
+    min_area = snakemake.config["min_region_area"]
     logger.debug(f"\nCleaning regions (removing regions < {min_area/1000000:.0f} km²)...")
     cleaned_regions = drop_small_regions(regions, min_area_threshold=min_area)
 
