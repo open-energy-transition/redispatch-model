@@ -25,7 +25,7 @@ from scripts._helpers import configure_logging, set_scenario_config
 logger = logging.getLogger(__name__)
 
 
-def load_country_shapes(filepath):
+def load_country_shapes(filepath: str) -> gpd.GeoDataFrame:
     """
     Load country shapes from GeoJSON file.
 
@@ -41,7 +41,7 @@ def load_country_shapes(filepath):
     return country_gdf
 
 
-def load_boundary_lines(filepath):
+def load_boundary_lines(filepath: str) -> gpd.GeoDataFrame:
     """
     Load boundary lines from shapefile or GeoJSON.
 
@@ -57,7 +57,7 @@ def load_boundary_lines(filepath):
     return boundary_gdf
 
 
-def align_crs(gdf1, gdf2):
+def align_crs(gdf1: gpd.GeoDataFrame, gdf2: gpd.GeoDataFrame) -> tuple:
     """
     Ensure both GeoDataFrames have the same CRS.
 
@@ -73,7 +73,7 @@ def align_crs(gdf1, gdf2):
     return gdf1, gdf2
 
 
-def create_regions_from_boundaries(country_shapes, boundary_lines):
+def create_regions_from_boundaries(country_shapes: gpd.GeoDataFrame, boundary_lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     Create regions by dividing country shapes using boundary lines.
 
@@ -86,7 +86,7 @@ def create_regions_from_boundaries(country_shapes, boundary_lines):
     """
     # Convert to a projected CRS for accurate area calculations
     # Use British National Grid (EPSG:27700) which is appropriate for UK
-    target_crs = "EPSG:27700"
+    target_crs = snakemake.config["target_crs"]
     logger.debug(f"Converting to projected CRS {target_crs} for accurate measurements")
 
     if country_shapes.crs != target_crs:
@@ -211,7 +211,7 @@ def create_regions_from_boundaries(country_shapes, boundary_lines):
         raise ValueError("Failed to create any regions from the provided country shapes and boundary lines")
 
 
-def drop_small_regions(regions_gdf, min_area_threshold=1000):
+def drop_small_regions(regions_gdf: gpd.GeoDataFrame, min_area_threshold: float = 1000) -> gpd.GeoDataFrame:
     """
     Clean up regions by removing very small polygons and fixing invalid geometries.
 
@@ -243,7 +243,7 @@ def drop_small_regions(regions_gdf, min_area_threshold=1000):
     return regions_gdf
 
 
-def save_regions(regions_gdf, output_path):
+def save_regions(regions_gdf: gpd.GeoDataFrame, output_path: str) -> None:
     """
     Save regions to GeoJSON file.
 

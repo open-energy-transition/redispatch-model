@@ -47,7 +47,7 @@ merge_groups = [
 ]
 
 
-def split_region_vertical(regions_gdf, region_num, longitude):
+def split_region_vertical(regions_gdf: gpd.GeoDataFrame, region_num: int, longitude: float) -> gpd.GeoDataFrame:
     """
     Split a region vertically at specified longitude
     
@@ -206,7 +206,7 @@ def split_region_vertical(regions_gdf, region_num, longitude):
         return regions_gdf
 
 
-def split_region_horizontal(regions_gdf, region_num, latitude):
+def split_region_horizontal(regions_gdf: gpd.GeoDataFrame, region_num: int, latitude: float) -> gpd.GeoDataFrame:
     """
     Split a region horizontally at specified latitude
     
@@ -286,7 +286,7 @@ def split_region_horizontal(regions_gdf, region_num, latitude):
         return regions_gdf
 
 
-def load_regions(input_file):
+def load_regions(input_file: str) -> gpd.GeoDataFrame:
     """Load regions from GeoJSON file"""
     logger.debug(f"Loading regions from: {input_file}")
     regions_gdf = gpd.read_file(input_file)
@@ -321,7 +321,7 @@ def load_regions(input_file):
     return regions_gdf
 
 
-def cut_regions_before_merge(regions_gdf):
+def cut_regions_before_merge(regions_gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     Cut regions before merging
     """
@@ -347,7 +347,7 @@ def cut_regions_before_merge(regions_gdf):
     return regions_gdf
 
 
-def merge_regions(regions_gdf, merge_groups):
+def merge_regions(regions_gdf: gpd.GeoDataFrame, merge_groups: list) -> gpd.GeoDataFrame:
     """
     Merge specified groups of regions
     
@@ -463,7 +463,7 @@ def merge_regions(regions_gdf, merge_groups):
     return result_gdf
 
 
-def save_regions(regions_gdf, output_file):
+def save_regions(regions_gdf: gpd.GeoDataFrame, output_file: str) -> None:
     """Save regions to GeoJSON file"""
     logger.debug(f"Saving {len(regions_gdf)} regions to: {output_file}")
     regions_gdf.to_file(output_file, driver='GeoJSON')
