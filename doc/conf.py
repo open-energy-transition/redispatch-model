@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+# SPDX-FileCopyrightText: Contributors to gb-open-market-model <https://github.com/open-energy-transition/gb-open-market-model>
 #
 # SPDX-License-Identifier: MIT
 
@@ -98,9 +99,9 @@ source_suffix = ".rst"
 master_doc = "gb-model/index"
 
 # General information about the project.
-project = "uk-open-market-model"
-copyright = "2017-2025 PyPSA-Eur contributors; 2025 uk-open-market-model contributors"
-author = "uk-open-market-model contributors"
+project = "gb-open-market-model"
+copyright = "2017-2025 PyPSA-Eur contributors; 2025 gb-open-market-model contributors"
+author = "gb-open-market-model contributors"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -166,7 +167,7 @@ html_theme = "sphinx_book_theme"
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-    "repository_url": "https://github.com/open-energy-transition/uk-open-market-model",
+    "repository_url": "https://github.com/open-energy-transition/gb-open-market-model",
     "use_repository_button": True,
     "show_navbar_depth": 1,
 }
@@ -177,10 +178,10 @@ html_theme_options = {
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = "uk-open-market-model"
+html_title = "gb-open-market-model"
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
-html_short_title = "uk-open-market-model"
+html_short_title = "gb-open-market-model"
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.

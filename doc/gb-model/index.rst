@@ -1,17 +1,17 @@
 ..
   SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
-  SPDX-FileCopyrightText: Contributors to UK-open-market-model <https://github.com/open-energy-transition/UK-open-market-model>
+  SPDX-FileCopyrightText: Contributors to gb-open-market-model <https://github.com/open-energy-transition/gb-open-market-model>
 
   SPDX-License-Identifier: CC-BY-4.0
 
 ##################################################################################
-UK-open-market-model: Great Britain dispatch model built on the PyPSA-Eur workflow
+gb-open-market-model: Great Britain dispatch model built on the PyPSA-Eur workflow
 ##################################################################################
 
 About
 =====
 
-UK-open-market-model is an extension of `PyPSA-Eur <../index.html>`_., used to quantify the economic (dis)benefit of proposed transmission boundary reinforcement options within the country.
+gb-open-market-model is an extension of `PyPSA-Eur <../index.html>`_., used to quantify the economic (dis)benefit of proposed transmission boundary reinforcement options within the country.
 
 Workflow
 ========
@@ -29,7 +29,7 @@ Workflow
 Operating Systems
 =================
 
-The UK-open-market-model workflow is continuously tested for Linux, macOS and Windows (WSL only).
+The gb-open-market-model workflow is continuously tested for Linux, macOS and Windows (WSL only).
 
 
 .. toctree::
