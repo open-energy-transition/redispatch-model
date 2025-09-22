@@ -22,31 +22,6 @@ from scripts._helpers import configure_logging, set_scenario_config
 logger = logging.getLogger(__name__)
 
 
-# Define merge groups as specified (updated list with split regions)
-merge_groups = [
-    [61, 64],                                   # Join 61, 64
-    [47, 48, 49],                               # Join 47, 48, 49
-    [54, 55, 56],                               # Join 54, 55, 56
-    [52, 53],                                   # Join 52, 53
-    [41, 43, '46s'],                            # Join 41, 43, 46s
-    [77, 78, 79],                               # Join 77, 78, 79
-    [40, 44, 45],                               # Join 40, 44, 45
-    [13, 16, 17],                               # Join 13, 16, 17
-    [80, 81, 82, 83],                           # Join 80, 81, 82, 83
-    [18, 19, 20, 21, 22, 23, 24, 31, 32, 33, 34, 94, 95, 96, 97, 98], # Join 18, 19, 20, 21, 22, 23, 24, 31, 32, 33, 34, 94, 95, 96, 97, 98
-    [2, 3, 91, 92],                             # Join 2, 3, 91, 92
-    [14, 15, 25, 26, 27, 28, 29, 30, 35, 36, 37, 38], # Join 14, 15, 25, 26, 27, 28, 29, 30, 35, 36, 37, 38
-    [62, 63, 86, 87, 88],                       # Join 62, 63, 86, 87, 88
-    [65, 66, 67, 68, 69, 70, 71, 72, 73, 84, 85], # Join 65, 66, 67, 68, 69, 70, 71, 72, 73, 84, 85
-    [10, '6wn', 11, 12, '8w'],                  # Join 10, 11, 12, 6wn, 8w
-    ['6e', '6ws', 7, 9],                        # Join 6e, 6ws, 7, 9
-    [39, 99],                                   # Join 39, 99
-    [74, 75, 76],                               # Join 74, 75, 76
-    [4, '5w']                                   # Join 4, 5w
-    # Keep 46n, 5e, and 8e as separate regions (no merge groups needed)
-]
-
-
 def split_region_vertical(regions_gdf: gpd.GeoDataFrame, region_num: int, longitude: float) -> gpd.GeoDataFrame:
     """
     Split a region vertically at specified longitude
@@ -323,19 +298,21 @@ def load_regions(input_file: str) -> gpd.GeoDataFrame:
 
 def cut_regions_before_merge(regions_gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
-    Cut regions before merging
+    Cut regions before merging based on configuration
     """
-    # Split region 6 vertically at longitude -2.48
-    regions_gdf = split_region_vertical(regions_gdf, 6, -2.48)
+    splits = snakemake.config["region_operations"]["splits"]
     
-    # Split region 5 vertically at longitude -1.93
-    regions_gdf = split_region_vertical(regions_gdf, 5, -1.93)
+    for split_config in splits:
+        region = split_config["region"]
+        split_type = split_config["type"]
+        coordinate = split_config["coordinate"]
 
-    # Split region 8 vertically at longitude -2.48
-    regions_gdf = split_region_vertical(regions_gdf, 8, -2.48)
-
-    # Split region 46 horizontally at latitude 53.1
-    regions_gdf = split_region_horizontal(regions_gdf, 46, 53.1)
+        if split_type == "vertical":
+            regions_gdf = split_region_vertical(regions_gdf, region, coordinate)
+        elif split_type == "horizontal":
+            regions_gdf = split_region_horizontal(regions_gdf, region, coordinate)
+        else:
+            logger.warning(f"Unknown split type: {split_type}")
 
     # Show split regions created
     split_regions = regions_gdf[regions_gdf['region_id'].str.contains('w|e|n|s', na=False)]
@@ -474,7 +451,7 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from scripts._helpers import mock_snakemake
 
-        snakemake = mock_snakemake("manual_region_merger", configfiles="config/config.GB.yaml")
+        snakemake = mock_snakemake("manual_region_merger")
     configure_logging(snakemake)
     set_scenario_config(snakemake)
 
@@ -483,6 +460,9 @@ if __name__ == "__main__":
 
     # Perform splitting operations first
     regions_gdf = cut_regions_before_merge(regions_gdf)
+
+    # Get merge groups from config
+    merge_groups = snakemake.config["region_operations"]["merge_groups"]
 
     # Perform merging operations
     merged_regions = merge_regions(regions_gdf, merge_groups)

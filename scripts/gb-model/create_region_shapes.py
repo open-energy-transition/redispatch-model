@@ -280,7 +280,7 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from scripts._helpers import mock_snakemake
 
-        snakemake = mock_snakemake("create_region_shapes", configfiles="config/config.GB.yaml")
+        snakemake = mock_snakemake("create_region_shapes")
     configure_logging(snakemake)
     set_scenario_config(snakemake)
 
