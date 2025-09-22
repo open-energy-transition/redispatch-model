@@ -95,12 +95,12 @@ source_suffix = ".rst"
 # source_encoding = 'utf-8-sig'
 
 # The master toctree document.
-master_doc = "index"
+master_doc = "gb-model/index"
 
 # General information about the project.
-project = "PyPSA-Eur"
-copyright = "2017-2025 Tom Brown (TUB, KIT, FIAS), Jonas Hoersch (OET, KIT, FIAS), Fabian Hofmann (OET, TUB, FIAS), Fabian Neumann (TUB, KIT), Marta Victoria (DTU, Aarhus University), Lisa Zeyen (TUB, KIT)"
-author = "Tom Brown (TUB, KIT, FIAS), Jonas Hoersch (OET, KIT, FIAS), Fabian Hofmann (OET, TUB, FIAS), Fabian Neumann (TUB, KIT), Marta Victoria (DTU, Aarhus University), Lisa Zeyen (TUB, KIT)"
+project = "uk-open-market-model"
+copyright = "2017-2025 PyPSA-Eur contributors; 2025 uk-open-market-model contributors"
+author = "uk-open-market-model contributors"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -166,7 +166,7 @@ html_theme = "sphinx_book_theme"
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-    "repository_url": "https://github.com/pypsa/pypsa-eur",
+    "repository_url": "https://github.com/open-energy-transition/uk-open-market-model",
     "use_repository_button": True,
     "show_navbar_depth": 1,
 }
@@ -177,10 +177,10 @@ html_theme_options = {
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = "PyPSA-Eur"
+html_title = "uk-open-market-model"
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
-html_short_title = "PyPSA-Eur"
+html_short_title = "uk-open-market-model"
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
@@ -259,7 +259,7 @@ html_logo = "img/pypsa-logo.png"
 # html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "PyPSAEurdoc"
+htmlhelp_basename = "GBModeldoc"
 
 # -- Options for LaTeX output ---------------------------------------------
 
