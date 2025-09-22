@@ -211,7 +211,7 @@ def create_regions_from_boundaries(country_shapes, boundary_lines):
         raise ValueError("Failed to create any regions from the provided country shapes and boundary lines")
 
 
-def clean_regions(regions_gdf, min_area_threshold=1000):
+def drop_small_regions(regions_gdf, min_area_threshold=1000):
     """
     Clean up regions by removing very small polygons and fixing invalid geometries.
 
@@ -296,7 +296,7 @@ if __name__ == "__main__":
     # Clean regions with appropriate threshold (1 km²)
     min_area = 1000000  # 1 km² in square meters
     logger.debug(f"\nCleaning regions (removing regions < {min_area/1000000:.0f} km²)...")
-    cleaned_regions = clean_regions(regions, min_area_threshold=min_area)
+    cleaned_regions = drop_small_regions(regions, min_area_threshold=min_area)
 
     # save regions to output file
     save_regions(cleaned_regions, snakemake.output.raw_region_shapes)
