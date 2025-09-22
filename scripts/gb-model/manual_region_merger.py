@@ -59,8 +59,8 @@ def split_region_vertical(regions_gdf, region_num, longitude):
     Returns:
         Updated GeoDataFrame with split regions
     """
-    logger.info(f"Splitting region {region_num} vertically at longitude {longitude}")
-    
+    logger.debug(f"Splitting region {region_num} vertically at longitude {longitude}")
+
     # Find the target region
     target_region_mask = regions_gdf['numeric_id'] == region_num
     if not target_region_mask.any():
@@ -83,131 +83,126 @@ def split_region_vertical(regions_gdf, region_num, longitude):
         (longitude, max_lat + extension)
     ])
     
-    try:
-        # Perform split
-        split_result = split(target_region.geometry, splitting_line)
+    # Perform split
+    split_result = split(target_region.geometry, splitting_line)
+
+    if hasattr(split_result, 'geoms') and len(split_result.geoms) >= 2:
+        logger.debug(f"Successfully split region {region_num} into {len(split_result.geoms)} parts")
         
-        if hasattr(split_result, 'geoms') and len(split_result.geoms) >= 2:
-            logger.info(f"Successfully split region {region_num} into {len(split_result.geoms)} parts")
+        # For region 6, handle special case with 3 parts
+        if region_num == 6 and len(split_result.geoms) >= 3:
+            # Sort all parts by longitude first
+            parts_with_centroids = []
+            for geom in split_result.geoms:
+                centroid = geom.centroid
+                parts_with_centroids.append((geom, centroid.x, centroid.y))
             
-            # For region 6, handle special case with 3 parts
-            if region_num == 6 and len(split_result.geoms) >= 3:
-                # Sort all parts by longitude first
-                parts_with_centroids = []
-                for geom in split_result.geoms:
-                    centroid = geom.centroid
-                    parts_with_centroids.append((geom, centroid.x, centroid.y))
-                
-                # Sort by longitude (west to east)
-                parts_with_centroids.sort(key=lambda x: x[1])
-                
-                # The westernmost part - check if it has north and south components
-                west_parts = []
-                east_part = None
-                
-                # Separate into west (< longitude) and east (>= longitude) 
-                for geom, lon, lat in parts_with_centroids:
-                    if lon < longitude:
-                        west_parts.append((geom, lon, lat))
+            # Sort by longitude (west to east)
+            parts_with_centroids.sort(key=lambda x: x[1])
+
+            # The westernmost part - check if it has north and south components
+            west_parts = []
+            east_part = None
+
+            # Separate into west (< longitude) and east (>= longitude)
+            for geom, lon, lat in parts_with_centroids:
+                if lon < longitude:
+                    west_parts.append((geom, lon, lat))
+                else:
+                    if east_part is None:
+                        east_part = (geom, lon, lat)
                     else:
-                        if east_part is None:
-                            east_part = (geom, lon, lat)
-                        else:
-                            # If multiple east parts, combine them
-                            from shapely.ops import unary_union
-                            combined_geom = unary_union([east_part[0], geom])
-                            east_part = (combined_geom, combined_geom.centroid.x, combined_geom.centroid.y)
+                        # If multiple east parts, combine them
+                        from shapely.ops import unary_union
+                        combined_geom = unary_union([east_part[0], geom])
+                        east_part = (combined_geom, combined_geom.centroid.x, combined_geom.centroid.y)
+
+            new_regions = []
+
+            # Handle west parts - if 2 or more, name them 6wn and 6ws
+            if len(west_parts) >= 2:
+                # Sort west parts by latitude (south to north)
+                west_parts.sort(key=lambda x: x[2])
                 
-                new_regions = []
-                
-                # Handle west parts - if 2 or more, name them 6wn and 6ws
-                if len(west_parts) >= 2:
-                    # Sort west parts by latitude (south to north)
-                    west_parts.sort(key=lambda x: x[2])
-                    
-                    suffixes = ['ws', 'wn']  # south first, then north
-                    for i, (geom, _, _) in enumerate(west_parts[:2]):  # Take max 2 parts
-                        new_region = target_region.copy()
-                        new_region['geometry'] = geom
-                        new_region['region_id'] = f"region_{region_num:03d}{suffixes[i]}"
-                        new_region['numeric_id'] = f"{region_num}{suffixes[i]}"
-                        
-                        if 'area_km2' in new_region.index:
-                            new_area_km2 = geom.area / 1000000 if regions_gdf.crs != 'EPSG:4326' else geom.area * 111000 * 111000 / 1000000
-                            new_region['area_km2'] = new_area_km2
-                        
-                        new_regions.append(new_region)
-                        logger.info(f"Created region {new_region['region_id']} ({suffixes[i]})")
-                
-                elif len(west_parts) == 1:
-                    # Only one west part, name it 6w
-                    geom = west_parts[0][0]
+                suffixes = ['ws', 'wn']  # south first, then north
+                for i, (geom, _, _) in enumerate(west_parts[:2]):  # Take max 2 parts
                     new_region = target_region.copy()
                     new_region['geometry'] = geom
-                    new_region['region_id'] = f"region_{region_num:03d}w"
-                    new_region['numeric_id'] = f"{region_num}w"
+                    new_region['region_id'] = f"region_{region_num:03d}{suffixes[i]}"
+                    new_region['numeric_id'] = f"{region_num}{suffixes[i]}"
                     
                     if 'area_km2' in new_region.index:
                         new_area_km2 = geom.area / 1000000 if regions_gdf.crs != 'EPSG:4326' else geom.area * 111000 * 111000 / 1000000
                         new_region['area_km2'] = new_area_km2
                     
                     new_regions.append(new_region)
-                    logger.info(f"Created region {new_region['region_id']} (w)")
-                
-                # Handle east part
-                if east_part is not None:
-                    geom = east_part[0]
-                    new_region = target_region.copy()
-                    new_region['geometry'] = geom
-                    new_region['region_id'] = f"region_{region_num:03d}e"
-                    new_region['numeric_id'] = f"{region_num}e"
-                    
-                    if 'area_km2' in new_region.index:
-                        new_area_km2 = geom.area / 1000000 if regions_gdf.crs != 'EPSG:4326' else geom.area * 111000 * 111000 / 1000000
-                        new_region['area_km2'] = new_area_km2
-                    
-                    new_regions.append(new_region)
-                    logger.info(f"Created region {new_region['region_id']} (e)")
-            
-            else:
-                # Standard 2-part split (for other regions or if region 6 only splits into 2)
-                centroids = [geom.centroid for geom in split_result.geoms]
-                longitudes = [centroid.x for centroid in centroids]
-                
-                # Sort by longitude (west to east)
-                sorted_parts = sorted(zip(split_result.geoms, longitudes), key=lambda x: x[1])
-                
-                # Create new region entries
-                new_regions = []
-                suffixes = ['w', 'e']  # west, east
-                
-                for i, (geom, _) in enumerate(sorted_parts):
-                    if i < len(suffixes):
-                        new_region = target_region.copy()
-                        new_region['geometry'] = geom
-                        new_region['region_id'] = f"region_{region_num:03d}{suffixes[i]}"
-                        new_region['numeric_id'] = f"{region_num}{suffixes[i]}"
-                        
-                        if 'area_km2' in new_region.index:
-                            new_area_km2 = geom.area / 1000000 if regions_gdf.crs != 'EPSG:4326' else geom.area * 111000 * 111000 / 1000000
-                            new_region['area_km2'] = new_area_km2
-                        
-                        new_regions.append(new_region)
-                        logger.info(f"Created region {new_region['region_id']} ({suffixes[i]})")
-            
-            # Remove original region and add new ones
-            result_gdf = regions_gdf.drop(index=target_idx)
-            for new_region in new_regions:
-                result_gdf = pd.concat([result_gdf, pd.DataFrame([new_region])], ignore_index=True)
-            
-            return result_gdf
-            
+                    logger.debug(f"Created region {new_region['region_id']} ({suffixes[i]})")
+
+            elif len(west_parts) == 1:
+                # Only one west part, name it 6w
+                geom = west_parts[0][0]
+                new_region = target_region.copy()
+                new_region['geometry'] = geom
+                new_region['region_id'] = f"region_{region_num:03d}w"
+                new_region['numeric_id'] = f"{region_num}w"
+
+                if 'area_km2' in new_region.index:
+                    new_area_km2 = geom.area / 1000000 if regions_gdf.crs != 'EPSG:4326' else geom.area * 111000 * 111000 / 1000000
+                    new_region['area_km2'] = new_area_km2
+
+                new_regions.append(new_region)
+                logger.debug(f"Created region {new_region['region_id']} (w)")
+
+            # Handle east part
+            if east_part is not None:
+                geom = east_part[0]
+                new_region = target_region.copy()
+                new_region['geometry'] = geom
+                new_region['region_id'] = f"region_{region_num:03d}e"
+                new_region['numeric_id'] = f"{region_num}e"
+
+                if 'area_km2' in new_region.index:
+                    new_area_km2 = geom.area / 1000000 if regions_gdf.crs != 'EPSG:4326' else geom.area * 111000 * 111000 / 1000000
+                    new_region['area_km2'] = new_area_km2
+
+                new_regions.append(new_region)
+                logger.debug(f"Created region {new_region['region_id']} (e)")
+
         else:
-            logger.error(f"Split failed - line doesn't properly divide region {region_num}")
-            return regions_gdf
-            
-    except Exception as e:
-        logger.error(f"Error during split of region {region_num}: {e}")
+            # Standard 2-part split (for other regions or if region 6 only splits into 2)
+            centroids = [geom.centroid for geom in split_result.geoms]
+            longitudes = [centroid.x for centroid in centroids]
+
+            # Sort by longitude (west to east)
+            sorted_parts = sorted(zip(split_result.geoms, longitudes), key=lambda x: x[1])
+
+            # Create new region entries
+            new_regions = []
+            suffixes = ['w', 'e']  # west, east
+
+            for i, (geom, _) in enumerate(sorted_parts):
+                if i < len(suffixes):
+                    new_region = target_region.copy()
+                    new_region['geometry'] = geom
+                    new_region['region_id'] = f"region_{region_num:03d}{suffixes[i]}"
+                    new_region['numeric_id'] = f"{region_num}{suffixes[i]}"
+                    
+                    if 'area_km2' in new_region.index:
+                        new_area_km2 = geom.area / 1000000 if regions_gdf.crs != 'EPSG:4326' else geom.area * 111000 * 111000 / 1000000
+                        new_region['area_km2'] = new_area_km2
+
+                    new_regions.append(new_region)
+                    logger.debug(f"Created region {new_region['region_id']} ({suffixes[i]})")
+
+        # Remove original region and add new ones
+        result_gdf = regions_gdf.drop(index=target_idx)
+        for new_region in new_regions:
+            result_gdf = pd.concat([result_gdf, pd.DataFrame([new_region])], ignore_index=True)
+
+        return result_gdf
+
+    else:
+        logger.error(f"Split failed - line doesn't properly divide region {region_num}")
         return regions_gdf
 
 
@@ -223,7 +218,7 @@ def split_region_horizontal(regions_gdf, region_num, latitude):
     Returns:
         Updated GeoDataFrame with split regions
     """
-    logger.info(f"Splitting region {region_num} horizontally at latitude {latitude}")
+    logger.debug(f"Splitting region {region_num} horizontally at latitude {latitude}")
     
     # Find the target region
     target_region_mask = regions_gdf['numeric_id'] == region_num
@@ -246,67 +241,62 @@ def split_region_horizontal(regions_gdf, region_num, latitude):
         (min_lon - extension, latitude),
         (max_lon + extension, latitude)
     ])
-    
-    try:
-        # Perform split
-        split_result = split(target_region.geometry, splitting_line)
-        
-        if hasattr(split_result, 'geoms') and len(split_result.geoms) >= 2:
-            logger.info(f"Successfully split region {region_num} into {len(split_result.geoms)} parts")
-            
-            # Determine which part is north and which is south
-            centroids = [geom.centroid for geom in split_result.geoms]
-            latitudes = [centroid.y for centroid in centroids]
-            
-            # Sort by latitude (south to north)
-            sorted_parts = sorted(zip(split_result.geoms, latitudes), key=lambda x: x[1])
-            
-            # Create new region entries
-            new_regions = []
-            suffixes = ['s', 'n']  # south, north
-            
-            for i, (geom, _) in enumerate(sorted_parts):
-                if i < len(suffixes):
-                    new_region = target_region.copy()
-                    new_region['geometry'] = geom
-                    new_region['region_id'] = f"region_{region_num:03d}{suffixes[i]}"
-                    new_region['numeric_id'] = f"{region_num}{suffixes[i]}"
-                    
-                    # Update area if column exists
-                    if 'area_km2' in new_region.index:
-                        new_area_km2 = geom.area / 1000000 if regions_gdf.crs != 'EPSG:4326' else geom.area * 111000 * 111000 / 1000000
-                        new_region['area_km2'] = new_area_km2
-                    
-                    new_regions.append(new_region)
-                    logger.info(f"Created region {new_region['region_id']} ({suffixes[i]})")
-            
-            # Remove original region and add new ones
-            result_gdf = regions_gdf.drop(index=target_idx)
-            for new_region in new_regions:
-                result_gdf = pd.concat([result_gdf, pd.DataFrame([new_region])], ignore_index=True)
-            
-            return result_gdf
-            
-        else:
-            logger.error(f"Split failed - line doesn't properly divide region {region_num}")
-            return regions_gdf
-            
-    except Exception as e:
-        logger.error(f"Error during split of region {region_num}: {e}")
+
+    # Perform split
+    split_result = split(target_region.geometry, splitting_line)
+
+    if hasattr(split_result, 'geoms') and len(split_result.geoms) >= 2:
+        logger.debug(f"Successfully split region {region_num} into {len(split_result.geoms)} parts")
+
+        # Determine which part is north and which is south
+        centroids = [geom.centroid for geom in split_result.geoms]
+        latitudes = [centroid.y for centroid in centroids]
+
+        # Sort by latitude (south to north)
+        sorted_parts = sorted(zip(split_result.geoms, latitudes), key=lambda x: x[1])
+
+        # Create new region entries
+        new_regions = []
+        suffixes = ['s', 'n']  # south, north
+
+        for i, (geom, _) in enumerate(sorted_parts):
+            if i < len(suffixes):
+                new_region = target_region.copy()
+                new_region['geometry'] = geom
+                new_region['region_id'] = f"region_{region_num:03d}{suffixes[i]}"
+                new_region['numeric_id'] = f"{region_num}{suffixes[i]}"
+
+                # Update area if column exists
+                if 'area_km2' in new_region.index:
+                    new_area_km2 = geom.area / 1000000 if regions_gdf.crs != 'EPSG:4326' else geom.area * 111000 * 111000 / 1000000
+                    new_region['area_km2'] = new_area_km2
+
+                new_regions.append(new_region)
+                logger.debug(f"Created region {new_region['region_id']} ({suffixes[i]})")
+
+        # Remove original region and add new ones
+        result_gdf = regions_gdf.drop(index=target_idx)
+        for new_region in new_regions:
+            result_gdf = pd.concat([result_gdf, pd.DataFrame([new_region])], ignore_index=True)
+
+        return result_gdf
+
+    else:
+        logger.error(f"Split failed - line doesn't properly divide region {region_num}")
         return regions_gdf
 
 
 def load_regions(input_file):
     """Load regions from GeoJSON file"""
-    logger.info(f"Loading regions from: {input_file}")
+    logger.debug(f"Loading regions from: {input_file}")
     regions_gdf = gpd.read_file(input_file)
-    logger.info(f"Loaded {len(regions_gdf)} regions")
+    logger.debug(f"Loaded {len(regions_gdf)} regions")
     
     # Show available region IDs for reference
     if 'region_id' in regions_gdf.columns:
         region_ids = regions_gdf['region_id'].tolist()
-        logger.info(f"Sample region IDs: {region_ids[:10]}")
-        logger.info(f"Region ID type: {type(region_ids[0])}")
+        logger.debug(f"Sample region IDs: {region_ids[:10]}")
+        logger.debug(f"Region ID type: {type(region_ids[0])}")
         
         # Extract numeric parts from region IDs for matching
         numeric_ids = []
@@ -321,10 +311,10 @@ def load_regions(input_file):
         
         # Add numeric ID column for easier matching
         regions_gdf['numeric_id'] = numeric_ids
-        logger.info(f"Extracted numeric IDs: {sorted([x for x in numeric_ids if x is not None])}")
+        logger.debug(f"Extracted numeric IDs: {sorted([x for x in numeric_ids if x is not None])}")
         
     else:
-        logger.info("No 'region_id' column found, using index as region ID")
+        logger.debug("No 'region_id' column found, using index as region ID")
         regions_gdf['region_id'] = regions_gdf.index + 1
         regions_gdf['numeric_id'] = regions_gdf.index + 1
     
@@ -335,8 +325,6 @@ def cut_regions_before_merge(regions_gdf):
     """
     Cut regions before merging
     """
-    logger.info("Performing region splits before merging...")
-
     # Split region 6 vertically at longitude -2.48
     regions_gdf = split_region_vertical(regions_gdf, 6, -2.48)
     
@@ -352,9 +340,9 @@ def cut_regions_before_merge(regions_gdf):
     # Show split regions created
     split_regions = regions_gdf[regions_gdf['region_id'].str.contains('w|e|n|s', na=False)]
     if len(split_regions) > 0:
-        logger.info("Split regions created:")
+        logger.debug("Split regions created:")
         for _, region in split_regions.iterrows():
-            logger.info(f"  - {region['region_id']} (numeric: {region['numeric_id']})")
+            logger.debug(f"  - {region['region_id']} (numeric: {region['numeric_id']})")
 
     return regions_gdf
 
@@ -370,14 +358,14 @@ def merge_regions(regions_gdf, merge_groups):
     Returns:
         GeoDataFrame with merged regions
     """
-    logger.info(f"Processing {len(merge_groups)} merge groups")
+    logger.debug(f"Processing {len(merge_groups)} merge groups")
     
     # Create a copy to work with
     result_gdf = regions_gdf.copy()
     regions_to_remove = set()
     
     for i, group in enumerate(merge_groups):
-        logger.info(f"Processing merge group {i+1}: regions {group}")
+        logger.debug(f"Processing merge group {i+1}: regions {group}")
         
         # Find regions in this group (handle both numeric and string IDs)
         group_regions_list = []
@@ -426,7 +414,7 @@ def merge_regions(regions_gdf, merge_groups):
         # Merge geometries
         try:
             merged_geometry = unary_union(geometries_to_merge)
-            logger.info(f"Successfully merged {len(geometries_to_merge)} geometries")
+            logger.debug(f"Successfully merged {len(geometries_to_merge)} geometries")
         except Exception as e:
             logger.error(f"Failed to merge geometries for group {group}: {e}")
             continue
@@ -439,7 +427,7 @@ def merge_regions(regions_gdf, merge_groups):
             # Calculate new area (assuming CRS is in meters)
             new_area_km2 = merged_geometry.area / 1000000
             result_gdf.loc[base_region_idx, 'area_km2'] = new_area_km2
-            logger.info(f"Updated area to {new_area_km2:.2f} km²")
+            logger.debug(f"Updated area to {new_area_km2:.2f} km²")
         
         # Track merged region IDs
         merged_region_ids = ', '.join(map(str, group[1:]))  # All except the first
@@ -461,25 +449,25 @@ def merge_regions(regions_gdf, merge_groups):
                 region_indices = result_gdf[result_gdf['numeric_id'] == region_id].index
             regions_to_remove.update(region_indices)
         
-        logger.info(f"Merged regions {group} into region {base_region['region_id']}")
+        logger.debug(f"Merged regions {group} into region {base_region['region_id']}")
     
     # Remove merged regions
     if regions_to_remove:
-        logger.info(f"Removing {len(regions_to_remove)} merged regions")
+        logger.debug(f"Removing {len(regions_to_remove)} merged regions")
         result_gdf = result_gdf.drop(index=regions_to_remove)
     
     # Reset index
     result_gdf = result_gdf.reset_index(drop=True)
     
-    logger.info(f"Final result: {len(regions_gdf)} -> {len(result_gdf)} regions")
+    logger.debug(f"Final result: {len(regions_gdf)} -> {len(result_gdf)} regions")
     return result_gdf
 
 
 def save_regions(regions_gdf, output_file):
     """Save regions to GeoJSON file"""
-    logger.info(f"Saving {len(regions_gdf)} regions to: {output_file}")
+    logger.debug(f"Saving {len(regions_gdf)} regions to: {output_file}")
     regions_gdf.to_file(output_file, driver='GeoJSON')
-    logger.info("Save completed successfully")
+    logger.debug("Save completed successfully")
 
 
 if __name__ == "__main__":
