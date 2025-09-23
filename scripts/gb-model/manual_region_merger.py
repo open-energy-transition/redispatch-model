@@ -48,14 +48,11 @@ def split_region_vertical(regions_gdf: gpd.GeoDataFrame, region_num: int, longit
     # Get region bounds to create a splitting line
     bounds = target_region.geometry.bounds
     min_lat, max_lat = bounds[1], bounds[3]
-    
-    # Extend the line beyond region bounds
-    extension = (max_lat - min_lat) * 0.5
-    
+
     # Create vertical splitting line at specified longitude
     splitting_line = LineString([
-        (longitude, min_lat - extension),
-        (longitude, max_lat + extension)
+        (longitude, min_lat),
+        (longitude, max_lat)
     ])
     
     # Perform split
@@ -207,14 +204,11 @@ def split_region_horizontal(regions_gdf: gpd.GeoDataFrame, region_num: int, lati
     # Get region bounds to create a splitting line
     bounds = target_region.geometry.bounds
     min_lon, max_lon = bounds[0], bounds[2]
-    
-    # Extend the line beyond region bounds
-    extension = (max_lon - min_lon) * 0.5
-    
+
     # Create horizontal splitting line at specified latitude
     splitting_line = LineString([
-        (min_lon - extension, latitude),
-        (max_lon + extension, latitude)
+        (min_lon, latitude),
+        (max_lon, latitude)
     ])
 
     # Perform split
