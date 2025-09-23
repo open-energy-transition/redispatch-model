@@ -16,7 +16,7 @@ rule create_region_shapes:
     log:
         logs("raw_region_shapes.log")
     resources:
-        mem_mb=8000,
+        mem_mb=1000,
     conda:
         "../envs/environment.yaml"
     script:
@@ -32,7 +32,7 @@ rule manual_region_merger:
     log:
         logs("manual_region_merger.log")
     resources:
-        mem_mb=8000,
+        mem_mb=1000,
     conda:
         "../envs/environment.yaml"
     script:
