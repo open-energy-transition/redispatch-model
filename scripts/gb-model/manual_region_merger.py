@@ -22,6 +22,14 @@ from scripts._helpers import configure_logging, set_scenario_config
 logger = logging.getLogger(__name__)
 
 
+def calculate_area_km2(geometry, crs) -> float:
+    """Calculate area in square kilometers, assuming CRS is in meters"""
+    if crs.is_projected:
+        return geometry.area / 1000000  # Convert m² to km²
+    else:
+        return abs(crs.get_geod().geometry_area_perimeter(geometry)[0]) / 1000000
+
+
 def split_region_vertical(regions_gdf: gpd.GeoDataFrame, region_num: int, longitude: float) -> gpd.GeoDataFrame:
     """
     Split a region vertically at specified longitude
@@ -104,7 +112,7 @@ def split_region_vertical(regions_gdf: gpd.GeoDataFrame, region_num: int, longit
                     new_region['numeric_id'] = f"{region_num}{suffixes[i]}"
                     
                     if 'area_km2' in new_region.index:
-                        new_area_km2 = geom.area / 1000000 if regions_gdf.crs != 'EPSG:4326' else geom.area * 111000 * 111000 / 1000000
+                        new_area_km2 = calculate_area_km2(geom, regions_gdf.crs)
                         new_region['area_km2'] = new_area_km2
                     
                     new_regions.append(new_region)
@@ -119,7 +127,7 @@ def split_region_vertical(regions_gdf: gpd.GeoDataFrame, region_num: int, longit
                 new_region['numeric_id'] = f"{region_num}w"
 
                 if 'area_km2' in new_region.index:
-                    new_area_km2 = geom.area / 1000000 if regions_gdf.crs != 'EPSG:4326' else geom.area * 111000 * 111000 / 1000000
+                    new_area_km2 = calculate_area_km2(geom, regions_gdf.crs)
                     new_region['area_km2'] = new_area_km2
 
                 new_regions.append(new_region)
@@ -134,7 +142,7 @@ def split_region_vertical(regions_gdf: gpd.GeoDataFrame, region_num: int, longit
                 new_region['numeric_id'] = f"{region_num}e"
 
                 if 'area_km2' in new_region.index:
-                    new_area_km2 = geom.area / 1000000 if regions_gdf.crs != 'EPSG:4326' else geom.area * 111000 * 111000 / 1000000
+                    new_area_km2 = calculate_area_km2(geom, regions_gdf.crs)
                     new_region['area_km2'] = new_area_km2
 
                 new_regions.append(new_region)
@@ -160,7 +168,7 @@ def split_region_vertical(regions_gdf: gpd.GeoDataFrame, region_num: int, longit
                     new_region['numeric_id'] = f"{region_num}{suffixes[i]}"
                     
                     if 'area_km2' in new_region.index:
-                        new_area_km2 = geom.area / 1000000 if regions_gdf.crs != 'EPSG:4326' else geom.area * 111000 * 111000 / 1000000
+                        new_area_km2 = calculate_area_km2(geom, regions_gdf.crs)
                         new_region['area_km2'] = new_area_km2
 
                     new_regions.append(new_region)
@@ -168,9 +176,15 @@ def split_region_vertical(regions_gdf: gpd.GeoDataFrame, region_num: int, longit
 
         # Remove original region and add new ones
         result_gdf = regions_gdf.drop(index=target_idx)
-        for new_region in new_regions:
-            result_gdf = pd.concat([result_gdf, pd.DataFrame([new_region])], ignore_index=True)
 
+        # Create a GeoDataFrame from new regions to preserve CRS
+        if new_regions:
+            new_regions_gdf = gpd.GeoDataFrame(new_regions, crs=regions_gdf.crs)
+            result_gdf = pd.concat([result_gdf, new_regions_gdf], ignore_index=True)
+
+        # Ensure the result maintains the original CRS
+        if result_gdf.crs is None:
+            result_gdf = result_gdf.set_crs(regions_gdf.crs)
         return result_gdf
 
     else:
@@ -237,7 +251,7 @@ def split_region_horizontal(regions_gdf: gpd.GeoDataFrame, region_num: int, lati
 
                 # Update area if column exists
                 if 'area_km2' in new_region.index:
-                    new_area_km2 = geom.area / 1000000 if regions_gdf.crs != 'EPSG:4326' else geom.area * 111000 * 111000 / 1000000
+                    new_area_km2 = calculate_area_km2(geom, regions_gdf.crs)
                     new_region['area_km2'] = new_area_km2
 
                 new_regions.append(new_region)
@@ -245,9 +259,15 @@ def split_region_horizontal(regions_gdf: gpd.GeoDataFrame, region_num: int, lati
 
         # Remove original region and add new ones
         result_gdf = regions_gdf.drop(index=target_idx)
-        for new_region in new_regions:
-            result_gdf = pd.concat([result_gdf, pd.DataFrame([new_region])], ignore_index=True)
 
+        # Create a GeoDataFrame from new regions to preserve CRS
+        if new_regions:
+            new_regions_gdf = gpd.GeoDataFrame(new_regions, crs=regions_gdf.crs)
+            result_gdf = pd.concat([result_gdf, new_regions_gdf], ignore_index=True)
+
+        # Ensure the result maintains the original CRS
+        if result_gdf.crs is None:
+            result_gdf = result_gdf.set_crs(regions_gdf.crs)
         return result_gdf
 
     else:
@@ -396,7 +416,7 @@ def merge_regions(regions_gdf: gpd.GeoDataFrame, merge_groups: list) -> gpd.GeoD
         # Update area if column exists
         if 'area_km2' in result_gdf.columns:
             # Calculate new area (assuming CRS is in meters)
-            new_area_km2 = merged_geometry.area / 1000000
+            new_area_km2 = calculate_area_km2(merged_geometry, regions_gdf.crs)
             result_gdf.loc[base_region_idx, 'area_km2'] = new_area_km2
             logger.debug(f"Updated area to {new_area_km2:.2f} km²")
         
@@ -445,7 +465,7 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from scripts._helpers import mock_snakemake
 
-        snakemake = mock_snakemake("manual_region_merger")
+        snakemake = mock_snakemake("manual_region_merger", configfiles="config/config.GB_main.yaml")
     configure_logging(snakemake)
     set_scenario_config(snakemake)
 
