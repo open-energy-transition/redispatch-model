@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: MIT
 
 
+urls:
+  gb-etys-boundaries: https://api.neso.energy/dataset/997f4820-1ad4-499b-b1fe-4b8d3d7fbc72/resource/e914fcec-1dc9-4f1f-97e7-59c0d9521bea/download/etys-boundary-gis-data-mar25.zip
 target_crs: "EPSG:27700"
 area_loss_tolerance_percent: 0.01 # percentage of area loss tolerated when splitting regions
 min_region_area: 1000000 # minimum area of a region in square meters (1 km²) for keeping it after splitting

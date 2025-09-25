@@ -14,22 +14,22 @@ configfile: "config/gb-model/config.common.yaml"
 # Rule to download and extract ETYS boundary data
 rule retrieve_etys_boundary_data:
     output:
-        boundary_shp="data/gb-model/etys-boundary-gis-data.shp",
+        boundary_shp="data/gb-model/etys-boundary-gis-data.zip",
     params:
         url=config["urls"]["gb-etys-boundaries"]
     log:
         logs("retrieve_etys_boundary_data.log")
     resources:
         mem_mb=1000,
-    envs: "envs/shell.yaml"  # This is required to install `curl` into a conda env on Windows 
-    shell: curl -sSLvo {output} {params.url}
+    conda: "../envs/shell.yaml"  # This is required to install `curl` into a conda env on Windows 
+    shell: "curl -sSLvo {output} {params.url}"
 
 
 # Rule to create region shapes using create_region_shapes.py
 rule create_region_shapes:
     input:
         country_shapes=resources("country_shapes.geojson"),
-        etys_boundary_lines="data/gb-model/etys-boundary-gis-data-mar25/ETYS boundary GIS data Mar25.shp"
+        etys_boundary_lines="data/gb-model/etys-boundary-gis-data.zip",
     output:
         raw_region_shapes=resources("raw_region_shapes.geojson")
     log:
