@@ -69,7 +69,9 @@ def split_region_vertical(regions_gdf: gpd.GeoDataFrame, region_num: int, longit
     if hasattr(split_result, 'geoms') and len(split_result.geoms) >= 2:
         logger.debug(f"Successfully split region {region_num} into {len(split_result.geoms)} parts")
         
-        # For region 6, handle special case with 3 parts
+        # For region 6, handle special case with 3 parts, because it is a concave shaped region. When splitted by
+        # vertical line,it can produce 3 parts: west-north, west-south, east regions. This is an exception case,
+        # because west-south part needs to be joined with east part.
         if region_num == 6 and len(split_result.geoms) >= 3:
             # Sort all parts by longitude first
             parts_with_centroids = []
