@@ -56,3 +56,18 @@ rule manual_region_merger:
         "../envs/environment.yaml"
     script:
         "../scripts/gb-model/manual_region_merger.py"
+
+
+# Rule to retrieve generation unit unavailability data from ENTSO-E
+rule retrieve_unavailability_data:
+    output:
+        gb_planned_unavailability=resources("gb_planned_unavailability.csv"),
+        gb_forced_unavailability=resources("gb_forced_unavailability.csv"),
+    log:
+        logs("retrieve_unavailability_data.log")
+    resources:
+        mem_mb=2000,
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/gb-model/retrieve_unavailability_data.py"
