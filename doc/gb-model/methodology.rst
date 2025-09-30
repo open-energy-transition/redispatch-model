@@ -24,7 +24,7 @@ Existing methodology
 
 .. raw:: html
 
-   <iframe src="../_static/existing_methodology.drawio.html" style="width: 100%; height: 550px; border: none;"></iframe>
+   <iframe src="../_static/existing_methodology_high_level.drawio.html" style="width: 100%; height: 550px; border: none;"></iframe>
 
    Graphical representation of our understanding of the NOA Refresh 2021-22 methodology.
    Clickable links to methodology / results reports are given for each data source box.
@@ -47,12 +47,16 @@ Model
 =====
 
 The model has two distinct phases: dispatch and re-dispatch.
-In the dispatch phase, a rolling horizon dispatch model is solved while ignoring GB inter-nodal transmission capacities.
+In the unconstrained dispatch phase, a rolling horizon dispatch model is solved while ignoring GB inter-nodal transmission capacities.
 In the re-dispatch phase, inter-nodal transmission capacities (a.k.a. "boundary capabilities") are introduced and the rolling horizon optimisation is re-run with the opportunity for generators to increase (offer) or decrease (bid) generation at a pre-defined cost in response to network congestion.
+In 2017, the optimisation was specified as running at a 4hr resolution (8 periods per day) for 20 years.
 The purpose of the re-dispatch phase is to calculate the system cost incurred by congestion (a.k.a. "constraint costs").
 These capacities are varied across scenarios to represent different transmission reinforcement proposals (a.k.a. "network options"), and the resulting constraint costs compared to find the most cost effective options to proceed with.
 
-This section is a summary of the 2017 `*Long Term Market and Network Constraint Modelling* report <https://www.nationalgrid.com/sites/default/files/documents/Long-term%20Market%20and%20Network%20Constraint%20Modelling.pdf>`_.
+This section is a summary of the 2017 `Long Term Market and Network Constraint Modelling report <https://www.nationalgrid.com/sites/default/files/documents/Long-term%20Market%20and%20Network%20Constraint%20Modelling.pdf>`_ and the `NOA 2021-22 Methodology <https://www.neso.energy/document/204196/download>`_.
+
+
+.. _method-existing-boundary-capabilities:
 
 Boundary capabilities
 =====================
@@ -75,8 +79,8 @@ Where seasonal variations are not provided, default adjustment factors will be u
 The NOA's purpose is to assess the cost-benefit ratio of these proposals.
 There are 136 proposals considered in the NOA Refresh 2021-22.
 It is evident that all possible combinations of these proposals cannot be simulated and compared (approx. 18,500 scenarios).
-Instead, subsets of proposals are included in a smaller set of scenarios.
-This subsetting is based on expert knowledge within NESO and is not publicly available.
+Instead, regions of the country are considered in isolation, with only the options in those regions being iterated over.
+Boundary capabilities of other regions are held constant, usually using the decisions from the previous NOA.
 
 Bids/Offers
 ===========
@@ -209,12 +213,12 @@ Scarcity rent, Start-up and No load costs, Ramp rates, Temperature dependent sta
 European neighbours
 ===================
 
-Europe is modelled according to a set of assumptions on the state of its energy infrastructure by the modelled end date.
+Europe is modelled according to a set of assumptions on the state of its energy infrastructure in each modelled year.
 The original modelling effort (2016/17) used a proprietary model with in-house expertise to define future infrastructure, considering national policies, emissions targets, GDP growth, stated plans, etc..
 The 2016/17 report states that the plan from 2017 was to use the system operator's European model.
 This implies that the NOA 2021-22 uses the FES European assumptions.
 
-The European model is run alongside the GB model to set wholesale electricity prices in neighbouring countries.
+The European model is run together with the GB model in the unconstrained run, to calculate wholesale electricity prices and marginal plants in neighbouring countries.
 
 Clean Energy Package Constraints
 ================================
@@ -224,26 +228,26 @@ That is, so long as the 50% threshold is reached, the 5% re-dispatch threshold d
 If the 50% threshold is not reached, the 5% threshold is checked and reinforcement options are iterated upon until it is reached.
 It is possible to still be compliant whilst not reaching either threshold (there are other ways to achieve compliance).
 
-See section 2.117 of the NOA 2021-22 methodology for more detail.
+See paragraph 2.117 of the NOA 2021-22 methodology for more detail.
 
 ================
 Decision process
 ================
 
-The method employed for assessing reinforcement options is the Single Year Regret Decision Making process.
-It is applied for each year from the year after the report date (here, 2022 onwards) for 40 years (assumed lifetime of reinforcements).
+A reinforcement option is deemed necessary if it generates a positive Net Present Value (NPV) over its lifetime when introduced into the model.
 
-This section is a summary combining the 2017 `*Long Term Market and Network Constraint Modelling* report <https://www.nationalgrid.com/sites/default/files/documents/Long-term%20Market%20and%20Network%20Constraint%20Modelling.pdf>`_, the `NOA 2021-22 Methodology <https://www.neso.energy/document/204196/download>`_ and the more recent `tCSNP Refresh Methodology <https://www.neso.energy/document/357916/download>`_ (the successor to the NOA).
+This section is a summary combining the 2017 `Long Term Market and Network Constraint Modelling report <https://www.nationalgrid.com/sites/default/files/documents/Long-term%20Market%20and%20Network%20Constraint%20Modelling.pdf>`_, the `NOA 2021-22 Methodology <https://www.neso.energy/document/204196/download>`_ and the more recent `tCSNP Refresh Methodology <https://www.neso.energy/document/357916/download>`_ (the successor to the NOA).
 
 Reinforcement option costs
 ==========================
 
-Net-Present Value (NPV) of reinforcement options are calculated for each re-dispatch run by combining constraint costs, investment costs, and societal cost of carbon.
+Net Present Value (NPV) of reinforcement options are calculated for each re-dispatch run by combining constraint costs, investment costs, and societal cost of carbon.
 
 Constraint costs
 ----------------
 
 The "constraint cost" is calculated as the sum of bids/offers following re-dispatch.
+This is calculated for 20 years of re-dispatch modelling (2023 - 2043) plus the final year of modelling repeated 20 times, to account for a 40-year project lifetime.
 It is then distributed to individual boundaries in the network by:
 
 1. calculating a "congestion charge" using the shadow price associated with each boundary constraint, i.e. the marginal cost change associated with increasing that boundary's capacity.
@@ -256,9 +260,15 @@ The methodology prefers weekly as hourly includes fluctuations that are within t
 Investment cost
 ---------------
 
-To calculate the net preset value of a system with a reinforcement option, the constraint costs is combined with the option's capital cost.
-To compare it with an annual constraint cost, it is amoratised over its life by applying the `Spackman approach <https://www.ofgem.gov.uk/sites/default/files/docs/2011/10/discounting-for-cost-benefit-analysis-involving-private-investment-but-public-benefit.pdf>`_, using the TO's WACC to annualise and HM Treasury's Social Time Preferential Rate to discount all costs and benefits.
+To calculate the NPV of a system with a reinforcement option, the constraint costs is combined with the option's capital cost, assuming a 40-year project lifetime.
+To compare it with an annual constraint cost, it is amortised over its life by applying the `Spackman approach <https://www.ofgem.gov.uk/sites/default/files/docs/2011/10/discounting-for-cost-benefit-analysis-involving-private-investment-but-public-benefit.pdf>`_, using the TO's WACC to annualise and HM Treasury's Social Time Preferential Rate to discount all costs and benefits.
 It is an approach that is stated as suitable for projects with private financing but public benefits.
+
+Delay costs
+-----------
+
+It is possible for options to be delayed from their Earliest In Service Date (EISD).
+This usually comes at a cost, defined by the TO, which is added into the option total cost.
 
 Societal Cost of Carbon
 -----------------------
@@ -271,7 +281,35 @@ In such cases, an economic benefit equal to the quantity of reduced emissions (c
 
   This does not appear in the NOA 2021-22 methodology, only the tCSNP, so we probably do not need to account for it to reproduce the NOA 2021-22.
 
-Single Year Regret Decision Making
-==================================
+Modelling steps
+===============
 
-This approach compares combinations of reinforcement options in a given year.
+.. raw:: html
+
+   <iframe src="../_static/existing_methodology_modelling_steps.drawio.html" style="width: 100%; height: 300px; border: none;"></iframe>
+
+   Graphical representation of our understanding of the NOA Refresh 2021-22 modelling steps.
+
+
+The modelling process involves adding candidates one a time in a pre-defined priority order for each specific GB region.
+As :ref:`aforementioned <method-existing-boundary-capabilities>`, reinforcements in other GB regions are fixed based on the most recent NOA report (here: 2020-2021).
+Regions are arbitrarily defined.
+The only criterion is that no option may appear in more than one region.
+
+The method for a region goes as follows:
+
+1. Re-dispatch run is undertaken with all proposed options disabled, to generate a *base case* which defines the reinforcement requirements on each boundary in the region for the first year (2023).
+2. All reinforcement options are ordered by priority to satisfy the requirements (by EISD? by magnitude of requirement met?).
+3. In order of priority, the options are added one-at-a-time and the 20-year re-dispatch model is re-run to get a new set of constraint costs.
+4. If multiple options are equal in priority, they are each modelled independently.
+5. For every option modelled at the same priority level, the NPV (constraint cost relative to base case combined with investment and delay costs) is calculated for introducing it at its EISD and for increasing delay years.
+   The lowest NPV for each option is chosen as its "optimum" year.
+6. If multiple options have been considered, the one with the earliest optimum year is chosen.
+   If it is unclear which should be chosen, the modelling is branched at this point.
+7. The chosen option is added to the base case and aforementioned steps are repeated with a *new* base case and the next option in the priority order.
+8. When the lowest NPV option gives a negative NPV, no more options are considered.
+
+The final set of considered options are referred to as the "reinforcement profile", each having an optimum year that it is in service.
+If this in-service year is equal to its EISD, the option is considered "critical".
+
+See paragraphs 2.78 - 2.92 of the NOA 2021-22 methodology report for more detail.
