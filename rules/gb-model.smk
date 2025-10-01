@@ -21,7 +21,7 @@ rule retrieve_etys_boundary_data:
         logs("retrieve_etys_boundary_data.log")
     resources:
         mem_mb=1000,
-    conda: "../envs/shell.yaml"  # This is required to install `curl` into a conda env on Windows 
+    conda: "../envs/shell.yaml"  # This is required to install `curl` into a conda env on Windows
     shell: "curl -sSLvo {output} {params.url}"
 
 
@@ -56,3 +56,24 @@ rule manual_region_merger:
         "../envs/environment.yaml"
     script:
         "../scripts/gb-model/manual_region_merger.py"
+
+
+rule compose_network:
+    input:
+        unpack(input_profile_tech),
+        network=resources("networks/base_s_{clusters}.nc"),
+        powerplants=resources("powerplants_s_{clusters}.csv"),
+        tech_costs=lambda w: resources(
+            f"costs_{config_provider('costs', 'year')(w)}.csv"
+        ),
+        hydro_capacities=ancient("data/hydro_capacities.csv"),
+    output:
+        network=resources("networks/composed_{clusters}.nc"),
+    log:
+        logs("compose_network_{clusters}.log")
+    resources:
+        mem_mb=4000,
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/gb-model/compose_network.py"

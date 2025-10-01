@@ -11,7 +11,6 @@ localrules:
     solve_elec_networks,
     solve_sector_networks,
 
-
 rule cluster_networks:
     input:
         expand(
@@ -19,6 +18,13 @@ rule cluster_networks:
             **config["scenario"],
             run=config["run"]["name"],
         ),
+
+rule compose_networks:
+    input:
+        expand(
+            resources("networks/composed_{clusters}.nc"), **config["scenario"],
+            run=config["run"]["name"]
+        )
 
 
 rule prepare_elec_networks:
