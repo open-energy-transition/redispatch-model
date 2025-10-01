@@ -29,24 +29,6 @@ from scripts._helpers import configure_logging, set_scenario_config
 
 logger = logging.getLogger(__name__)
 
-# UK bidding zone codes
-UK_BIDDING_ZONES = {
-    "GB": "10YGB----------A",  # Great Britain
-}
-
-# Business types for outage classification
-BUSINESS_TYPES = {
-    "planned": "A53",  # Planned maintenance
-    "forced": "A54",  # Forced unavailability (unplanned outage)
-}
-
-# Document status codes
-DOC_STATUS = {
-    "active": "A05",  # Active
-    "cancelled": "A09",  # Cancelled
-    "withdrawn": "A13",  # Withdrawn
-}
-
 
 class ENTSOEUnavailabilityAPI:
     """
@@ -529,7 +511,7 @@ def _get_text(element, xpath: str, namespaces: dict[str, str]) -> Optional[str]:
 
 
 def process_unavailability_data(
-    df: pd.DataFrame, output_file: str, bidding_zone: str
+    df: pd.DataFrame, output_file: str, bidding_zone: str, config: dict
 ) -> None:
     """
     Process and save unavailability data
@@ -538,6 +520,7 @@ def process_unavailability_data(
         df: DataFrame with raw unavailability data
         output_file: Path to save processed data
         bidding_zone: Bidding zone identifier
+        config: Snakemake configuration dictionary
     """
     if df.empty:
         logger.warning("No data to process")
@@ -571,13 +554,18 @@ def process_unavailability_data(
     df["bidding_zone"] = bidding_zone
 
     # Clean and process data
-    df["business_type_desc"] = df["business_type"].map(
-        {"A53": "Planned maintenance", "A54": "Forced unavailability"}
-    )
+    business_type_map = {
+        config["business_types"]["planned"]: "Planned maintenance",
+        config["business_types"]["forced"]: "Forced unavailability",
+    }
+    df["business_type_desc"] = df["business_type"].map(business_type_map)
 
-    df["doc_status_desc"] = df["doc_status"].map(
-        {"A05": "Active", "A09": "Cancelled", "A13": "Withdrawn"}
-    )
+    doc_status_map = {
+        config["doc_status"]["active"]: "Active",
+        config["doc_status"]["cancelled"]: "Cancelled",
+        config["doc_status"]["withdrawn"]: "Withdrawn",
+    }
+    df["doc_status_desc"] = df["doc_status"].map(doc_status_map)
 
     # Sort by start time
     df = df.sort_values(["start_time", "resource_name"])
@@ -751,32 +739,37 @@ if __name__ == "__main__":
     )
     max_request_days = snakemake.config.get("max_request_days", 7)
 
+    # Get mapping dictionaries from config
+    uk_bidding_zones = snakemake.config.get("uk_bidding_zones", {})
+    business_types_map = snakemake.config.get("business_types", {})
+    doc_status_map = snakemake.config.get("doc_status", {})
+
     # Initialize API client
     api_client = ENTSOEUnavailabilityAPI(api_key)
 
     # Test API connection first
     logger.info("Testing API connection...")
-    if not test_api_connection(api_client, UK_BIDDING_ZONES["GB"]):
+    if not test_api_connection(api_client, uk_bidding_zones.get("GB")):
         raise ConnectionError(
             "API connection test failed. Check your API key and network connection."
         )
 
     # Process each bidding zone
     for zone in bidding_zones:
-        if zone not in UK_BIDDING_ZONES:
+        if zone not in uk_bidding_zones:
             logger.warning(f"Unknown bidding zone: {zone}")
             continue
 
-        zone_code = UK_BIDDING_ZONES[zone]
+        zone_code = uk_bidding_zones[zone]
         logger.info(f"Retrieving unavailability data for {zone} ({zone_code})")
 
         # Process each business type
         for business_type in business_types:
-            if business_type not in BUSINESS_TYPES:
+            if business_type not in business_types_map:
                 logger.warning(f"Unknown business type: {business_type}")
                 continue
 
-            business_code = BUSINESS_TYPES[business_type]
+            business_code = business_types_map[business_type]
             logger.info(f"Processing {business_type} outages ({business_code})")
 
             try:
@@ -796,7 +789,7 @@ if __name__ == "__main__":
                     bidding_zone=zone_code,
                     periods=periods,
                     business_type=business_code,
-                    doc_status=DOC_STATUS["active"],
+                    doc_status=doc_status_map["active"],
                     xml_save_dir=xml_save_dir,
                 )
 
@@ -810,7 +803,7 @@ if __name__ == "__main__":
                 ]
 
                 # Process and save data
-                process_unavailability_data(df, output_file, zone)
+                process_unavailability_data(df, output_file, zone, snakemake.config)
 
                 # Log XML storage information across all periods
                 xml_base_dir = Path(xml_save_dir)
