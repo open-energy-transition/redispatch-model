@@ -12,8 +12,6 @@ connection costs) so that downstream rules can import a consistent
 ``networks/composed_{clusters}.nc`` snapshot.
 """
 
-from __future__ import annotations
-
 import copy
 import logging
 from dataclasses import dataclass
@@ -76,7 +74,9 @@ def _load_powerplants(
     columns = ["bus", "carrier", "p_nom", "max_hours"]
 
     if powerplants_path is None:
-        logger.info("No power plant input provided; continuing without existing capacities")
+        logger.info(
+            "No power plant input provided; continuing without existing capacities"
+        )
         return pd.DataFrame(columns=columns)
 
     if not powerplants_path.exists():
@@ -120,9 +120,7 @@ def integrate_renewables(
     ppl = _load_powerplants(powerplants_path, costs, config)
 
     profile_paths = {
-        key: Path(value)
-        for key, value in inputs.items()
-        if key.startswith("profile_")
+        key: Path(value) for key, value in inputs.items() if key.startswith("profile_")
     }
 
     available_non_hydro = [
@@ -146,7 +144,8 @@ def integrate_renewables(
         landfall_lengths = {
             tech: settings.get("landfall_length")
             for tech, settings in config.get("renewable", {}).items()
-            if isinstance(settings, dict) and settings.get("landfall_length") is not None
+            if isinstance(settings, dict)
+            and settings.get("landfall_length") is not None
         }
         line_length_factor = config.get("lines", {}).get("length_factor", 1.0)
 
@@ -188,6 +187,7 @@ def integrate_renewables(
         carriers,
         **hydro_cfg,
     )
+
 
 def add_gb_components(
     n: pypsa.Network,
