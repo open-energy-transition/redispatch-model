@@ -177,11 +177,19 @@ def retrieve_data_by_periods(
         List of DataFrames, one per period
     """
     all_dataframes = []
+    successful_periods = 0
+
+    # Log overall progress
+    logger.info(
+        f"Retrieving {len(periods)} periods from {periods[0][0].date()} to {periods[-1][1].date()}"
+    )
 
     for i, (period_start, period_end) in enumerate(periods, 1):
-        logger.info(
-            f"Retrieving period {i}/{len(periods)}: {period_start.date()} to {period_end.date()}"
-        )
+        # Show progress every 10 periods or at start/end
+        if i == 1 or i == len(periods) or i % 10 == 0:
+            logger.info(
+                f"Progress: {i}/{len(periods)} periods ({(i / len(periods) * 100):.0f}%)"
+            )
 
         try:
             # Add period identifier to XML save directory
@@ -195,8 +203,6 @@ def retrieve_data_by_periods(
                 doc_status=doc_status,
             )
 
-            logger.debug(f"Retrieved {len(response_content)} bytes for period {i}")
-
             # Parse data and save XML files
             df = parse_unavailability_zip(response_content, period_xml_dir)
 
@@ -206,22 +212,22 @@ def retrieve_data_by_periods(
                 df["request_period_end"] = period_end
                 df["period_batch"] = i
                 all_dataframes.append(df)
-                logger.info(f"Period {i}: Parsed {len(df)} records")
-            else:
-                logger.info(f"Period {i}: No data found")
+                successful_periods += 1
 
             # Rate limiting between requests
             if i < len(periods):
                 time.sleep(2)  # 2 second delay between requests
 
         except Exception as e:
-            logger.error(
-                f"Failed to retrieve period {i} ({period_start.date()} to {period_end.date()}): {e}"
-            )
+            # Only log actual errors, not "no data" cases
+            if "File is not a zip file" not in str(e):
+                logger.warning(
+                    f"Period {i} ({period_start.date()} to {period_end.date()}): {e}"
+                )
             continue
 
     logger.info(
-        f"Successfully retrieved {len(all_dataframes)} periods out of {len(periods)}"
+        f"Retrieved data from {successful_periods}/{len(periods)} periods ({(successful_periods / len(periods) * 100):.0f}% success rate)"
     )
     return all_dataframes
 
@@ -303,13 +309,17 @@ def parse_unavailability_zip(
     try:
         with zipfile.ZipFile(io.BytesIO(zip_content)) as zf:
             xml_files = [f for f in zf.namelist() if f.endswith(".xml")]
-            logger.info(f"Processing ZIP file with {len(xml_files)} XML files")
+            # Only log if we actually find files
+            if xml_files:
+                logger.debug(f"Processing ZIP file with {len(xml_files)} XML files")
 
             # Create save directory if specified
             if save_xml_dir:
                 save_path = Path(save_xml_dir)
                 save_path.mkdir(parents=True, exist_ok=True)
-                logger.info(f"Saving XML files to: {save_path}")
+                # Only log if we have files to save
+                if xml_files:
+                    logger.debug(f"Saving XML files to: {save_path}")
 
             for filename in xml_files:
                 try:
@@ -320,7 +330,7 @@ def parse_unavailability_zip(
                         xml_file_path = save_path / filename
                         with open(xml_file_path, "w", encoding="utf-8") as f:
                             f.write(xml_content)
-                        logger.debug(f"Saved {filename} to {xml_file_path}")
+                        # Removed individual file save logging for brevity
 
                     file_outages = parse_xml_content(xml_content, filename)
                     outages.extend(file_outages)
@@ -334,11 +344,12 @@ def parse_unavailability_zip(
         return pd.DataFrame()
 
     if not outages:
-        logger.warning("No outage data found in ZIP file")
+        # Don't log "no data" as it's common
         return pd.DataFrame()
 
     df = pd.DataFrame(outages)
-    logger.info(f"Parsed {len(df)} outage records from ZIP file")
+    if len(df) > 0:
+        logger.debug(f"Parsed {len(df)} outage records from ZIP file")
     return df
 
 
