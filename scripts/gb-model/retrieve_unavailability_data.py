@@ -45,7 +45,7 @@ class ENTSOEUnavailabilityAPI:
         self.api_key = api_key
         self.base_url = "https://web-api.tp.entsoe.eu/api"
         self.session = requests.Session()
-        self.rate_limit_delay = 3.0  # Seconds between requests
+        self.rate_limit_delay = 2.0  # Seconds between requests
 
     def _make_request(self, params: dict[str, Any]) -> requests.Response:
         """
@@ -247,19 +247,19 @@ def merge_period_dataframes(dataframes: list[pd.DataFrame]) -> pd.DataFrame:
     )
 
     # Remove duplicates based on key fields
-    # Use document_mrid and start_time/end_time as the primary key for deduplication
+    # Use resource_mrid and start_time/end_time as the primary key for deduplication
     # This focuses on actual outage periods rather than data reporting periods
-    key_columns = ["document_mrid", "timeseries_mrid", "start_time", "end_time"]
+    key_columns = ["resource_mrid", "start_time", "end_time"]
 
     # Only use columns that exist in the dataframe
     existing_key_columns = [col for col in key_columns if col in combined_df.columns]
 
-    # If start_time/end_time not available, fall back to period_start/period_end
+    # If start_time/end_time not available, fall back to resource_mrid and business_type
     if (
         "start_time" not in existing_key_columns
-        and "period_start" in combined_df.columns
+        and "resource_mrid" in combined_df.columns
     ):
-        key_columns = ["document_mrid", "timeseries_mrid", "period_start", "period_end"]
+        key_columns = ["resource_mrid", "business_type"]
         existing_key_columns = [
             col for col in key_columns if col in combined_df.columns
         ]
@@ -279,8 +279,8 @@ def merge_period_dataframes(dataframes: list[pd.DataFrame]) -> pd.DataFrame:
     # Sort by start time and resource name
     if "start_time" in combined_df.columns:
         combined_df = combined_df.sort_values(["start_time", "resource_name"])
-    elif "period_start" in combined_df.columns:
-        combined_df = combined_df.sort_values(["period_start", "resource_name"])
+    else:
+        combined_df = combined_df.sort_values(["resource_name"])
 
     return combined_df
 
@@ -359,25 +359,13 @@ def parse_xml_content(xml_content: str, filename: str = "") -> list[dict]:
         root = ET.fromstring(xml_content)
         namespaces = {"ns": "urn:iec62325.351:tc57wg16:451-6:outagedocument:3:0"}
 
-        # Extract document-level information
-        doc_mrid = _get_text(root, ".//ns:mRID", namespaces)
-        doc_revision = _get_text(root, ".//ns:revisionNumber", namespaces)
-        doc_status = _get_text(root, ".//ns:docStatus/ns:value", namespaces)
-
         # Find all TimeSeries elements
         timeseries_elements = root.findall(".//ns:TimeSeries", namespaces)
 
         for ts in timeseries_elements:
             outage_data = {}
 
-            # Document information
-            outage_data["document_mrid"] = doc_mrid
-            outage_data["revision_number"] = doc_revision
-            outage_data["doc_status"] = doc_status
-            outage_data["source_file"] = filename
-
             # TimeSeries information
-            outage_data["timeseries_mrid"] = _get_text(ts, ".//ns:mRID", namespaces)
             outage_data["business_type"] = _get_text(
                 ts, ".//ns:businessType", namespaces
             )
@@ -436,24 +424,6 @@ def parse_xml_content(xml_content: str, filename: str = "") -> list[dict]:
             if available_periods:
                 for period in available_periods:
                     period_data = outage_data.copy()
-
-                    # Period-specific time interval
-                    interval_start = _get_text(
-                        period, ".//ns:timeInterval/ns:start", namespaces
-                    )
-                    interval_end = _get_text(
-                        period, ".//ns:timeInterval/ns:end", namespaces
-                    )
-
-                    if interval_start:
-                        period_data["period_start"] = pd.to_datetime(interval_start)
-                    if interval_end:
-                        period_data["period_end"] = pd.to_datetime(interval_end)
-
-                    # Resolution
-                    period_data["resolution"] = _get_text(
-                        period, ".//ns:resolution", namespaces
-                    )
 
                     # Extract data points
                     points = period.findall(".//ns:Point", namespaces)
@@ -527,17 +497,13 @@ def process_unavailability_data(
         # Create empty CSV with headers
         empty_df = pd.DataFrame(
             columns=[
-                "document_mrid",
                 "resource_mrid",
                 "resource_name",
                 "resource_location",
                 "resource_type",
                 "business_type",
-                "doc_status",
                 "start_time",
                 "end_time",
-                "period_start",
-                "period_end",
                 "nominal_power_mw",
                 "min_available_mw",
                 "max_available_mw",
@@ -545,6 +511,7 @@ def process_unavailability_data(
                 "min_unavailable_mw",
                 "max_unavailable_mw",
                 "bidding_zone",
+                "business_type_desc",
             ]
         )
         empty_df.to_csv(output_file, index=False)
@@ -560,108 +527,65 @@ def process_unavailability_data(
     }
     df["business_type_desc"] = df["business_type"].map(business_type_map)
 
-    doc_status_map = {
-        config["doc_status"]["active"]: "Active",
-        config["doc_status"]["cancelled"]: "Cancelled",
-        config["doc_status"]["withdrawn"]: "Withdrawn",
-    }
-    df["doc_status_desc"] = df["doc_status"].map(doc_status_map)
-
     # Sort by start time
     df = df.sort_values(["start_time", "resource_name"])
 
+    # Select only the columns we want to keep in the output
+    output_columns = [
+        "resource_mrid",
+        "resource_name",
+        "resource_location",
+        "resource_type",
+        "business_type",
+        "start_time",
+        "end_time",
+        "nominal_power_mw",
+        "min_available_mw",
+        "max_available_mw",
+        "avg_available_mw",
+        "min_unavailable_mw",
+        "max_unavailable_mw",
+        "bidding_zone",
+        "business_type_desc",
+    ]
+
+    # Filter to only include columns that exist in the dataframe
+    columns_to_keep = [col for col in output_columns if col in df.columns]
+    df_filtered = df[columns_to_keep]
+
     # Save processed data
-    df.to_csv(output_file, index=False)
-    logger.info(f"Saved {len(df)} records to {output_file}")
+    df_filtered.to_csv(output_file, index=False)
+    logger.info(f"Saved {len(df_filtered)} records to {output_file}")
 
     # Print summary statistics
     logger.info("Data summary:")
-    if "start_time" in df.columns and not df["start_time"].isnull().all():
-        logger.info(f"  Date range: {df['start_time'].min()} to {df['end_time'].max()}")
-    logger.info(f"  Total outage records: {len(df)}")
-    logger.info(f"  Unique generation units: {df['resource_name'].nunique()}")
-
-    if "nominal_power_mw" in df.columns and not df["nominal_power_mw"].isnull().all():
+    if (
+        "start_time" in df_filtered.columns
+        and not df_filtered["start_time"].isnull().all()
+    ):
         logger.info(
-            f"  Total installed capacity: {df['nominal_power_mw'].sum():.1f} MW"
+            f"  Date range: {df_filtered['start_time'].min()} to {df_filtered['end_time'].max()}"
+        )
+    logger.info(f"  Total outage records: {len(df_filtered)}")
+    logger.info(f"  Unique generation units: {df_filtered['resource_name'].nunique()}")
+
+    if (
+        "nominal_power_mw" in df_filtered.columns
+        and not df_filtered["nominal_power_mw"].isnull().all()
+    ):
+        logger.info(
+            f"  Total installed capacity: {df_filtered['nominal_power_mw'].sum():.1f} MW"
         )
 
     # Business type breakdown
-    if "business_type_desc" in df.columns:
+    if "business_type_desc" in df_filtered.columns:
         business_breakdown = (
-            df.groupby("business_type_desc")
-            .agg({"resource_name": "nunique", "document_mrid": "count"})
+            df_filtered.groupby("business_type_desc")
+            .agg({"resource_name": "nunique", "resource_mrid": "count"})
             .round(1)
         )
         business_breakdown.columns = ["Unique_Units", "Total_Records"]
         logger.info(f"  Breakdown by type:\\n{business_breakdown}")
-
-
-def create_xml_index(xml_dir: str) -> pd.DataFrame:
-    """
-    Create an index of stored XML files with metadata
-
-    Args:
-        xml_dir: Directory containing XML files
-
-    Returns:
-        DataFrame with XML file metadata
-    """
-    xml_path = Path(xml_dir)
-    if not xml_path.exists():
-        return pd.DataFrame()
-
-    xml_files = list(xml_path.glob("*.xml"))
-    if not xml_files:
-        return pd.DataFrame()
-
-    index_data = []
-
-    for xml_file in xml_files:
-        try:
-            # Extract metadata from filename
-            filename = xml_file.name
-
-            # Parse basic file info
-            file_info = {
-                "filename": filename,
-                "filepath": str(xml_file),
-                "size_bytes": xml_file.stat().st_size,
-                "modified_time": datetime.fromtimestamp(xml_file.stat().st_mtime),
-            }
-
-            # Try to extract period from filename
-            if "PLANNED_UNAVAIL_OF_GENERATION_UNITS_" in filename:
-                parts = filename.split("PLANNED_UNAVAIL_OF_GENERATION_UNITS_")[
-                    1
-                ].replace(".xml", "")
-                if "-" in parts:
-                    start_str, end_str = parts.split("-")
-                    try:
-                        file_info["period_start"] = pd.to_datetime(
-                            start_str, format="%Y%m%d%H%M"
-                        )
-                        file_info["period_end"] = pd.to_datetime(
-                            end_str, format="%Y%m%d%H%M"
-                        )
-                    except (ValueError, TypeError):
-                        pass
-
-            index_data.append(file_info)
-
-        except Exception as e:
-            logger.warning(f"Error indexing {xml_file}: {e}")
-            continue
-
-    if index_data:
-        df = pd.DataFrame(index_data)
-        # Save index file
-        index_file = xml_path / "xml_index.csv"
-        df.to_csv(index_file, index=False)
-        logger.info(f"Created XML index with {len(df)} files: {index_file}")
-        return df
-
-    return pd.DataFrame()
 
 
 def test_api_connection(api_client, zone_code: str) -> bool:
@@ -772,64 +696,51 @@ if __name__ == "__main__":
             business_code = business_types_map[business_type]
             logger.info(f"Processing {business_type} outages ({business_code})")
 
-            try:
-                # Split the date range into weekly periods
-                periods = generate_weekly_periods(
-                    start_date, end_date, max_days=max_request_days
-                )
+            # Split the date range into weekly periods
+            periods = generate_weekly_periods(
+                start_date, end_date, max_days=max_request_days
+            )
 
-                # Create XML storage directory
-                xml_save_dir = (
-                    f"data/gb-model/outage_data/{zone.lower()}_{business_type}"
-                )
+            # Create XML storage directory
+            xml_save_dir = f"data/gb-model/outage_data/{zone.lower()}_{business_type}"
 
-                # Retrieve data for all periods
-                all_dataframes = retrieve_data_by_periods(
-                    api_client=api_client,
-                    bidding_zone=zone_code,
-                    periods=periods,
-                    business_type=business_code,
-                    doc_status=doc_status_map["active"],
-                    xml_save_dir=xml_save_dir,
-                )
+            # Retrieve data for all periods
+            all_dataframes = retrieve_data_by_periods(
+                api_client=api_client,
+                bidding_zone=zone_code,
+                periods=periods,
+                business_type=business_code,
+                doc_status=doc_status_map["active"],
+                xml_save_dir=xml_save_dir,
+            )
 
-                # Merge all periods into a single DataFrame
-                df = merge_period_dataframes(all_dataframes)
-                logger.info(f"Final merged DataFrame has {len(df)} rows")
+            # Merge all periods into a single DataFrame
+            df = merge_period_dataframes(all_dataframes)
+            logger.info(f"Final merged DataFrame has {len(df)} rows")
 
-                # Generate output filename
-                output_file = snakemake.output[
-                    f"{zone.lower()}_{business_type}_unavailability"
+            # Generate output filename
+            output_file = snakemake.output[
+                f"{zone.lower()}_{business_type}_unavailability"
+            ]
+
+            # Process and save data
+            process_unavailability_data(df, output_file, zone, snakemake.config)
+
+            # Log XML storage information across all periods
+            xml_base_dir = Path(xml_save_dir)
+            if xml_base_dir.exists():
+                # Count XML files across all period subdirectories
+                total_xml_count = len(list(xml_base_dir.rglob("*.xml")))
+                total_size = sum(f.stat().st_size for f in xml_base_dir.rglob("*.xml"))
+
+                period_dirs = [
+                    d
+                    for d in xml_base_dir.iterdir()
+                    if d.is_dir() and d.name.startswith("period_")
                 ]
 
-                # Process and save data
-                process_unavailability_data(df, output_file, zone, snakemake.config)
-
-                # Log XML storage information across all periods
-                xml_base_dir = Path(xml_save_dir)
-                if xml_base_dir.exists():
-                    # Count XML files across all period subdirectories
-                    total_xml_count = len(list(xml_base_dir.rglob("*.xml")))
-                    total_size = sum(
-                        f.stat().st_size for f in xml_base_dir.rglob("*.xml")
-                    )
-
-                    period_dirs = [
-                        d
-                        for d in xml_base_dir.iterdir()
-                        if d.is_dir() and d.name.startswith("period_")
-                    ]
-
-                    logger.info(
-                        f"Stored {total_xml_count} XML files ({total_size / 1024 / 1024:.1f} MB) across {len(period_dirs)} periods in {xml_base_dir}"
-                    )
-
-                    # Create XML index for the overall collection
-                    create_xml_index(xml_save_dir)
-
-            except Exception as e:
-                logger.error(f"Failed to process {zone} {business_type} data: {e}")
-                logger.exception("Full traceback:")
-                continue
+                logger.info(
+                    f"Stored {total_xml_count} XML files ({total_size / 1024 / 1024:.1f} MB) across {len(period_dirs)} periods in {xml_base_dir}"
+                )
 
     logger.info("Unavailability data retrieval completed")
