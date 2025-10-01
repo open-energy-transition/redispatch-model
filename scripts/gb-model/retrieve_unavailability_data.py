@@ -731,9 +731,7 @@ if __name__ == "__main__":
             logger.info(f"Final merged DataFrame has {len(df)} rows")
 
             # Generate output filename
-            output_file = snakemake.output[
-                f"{zone.lower()}_{business_type}_unavailability"
-            ]
+            output_file = snakemake.output[f"{business_type}_unavailability"]
 
             # Process and save data
             process_unavailability_data(df, output_file, zone, snakemake.config)
