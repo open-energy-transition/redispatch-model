@@ -521,9 +521,14 @@ def process_unavailability_data(
     df["bidding_zone"] = bidding_zone
 
     # Clean and process data
+    entso_e_config = config.get("unavailability", {}).get("entso_e", {})
     business_type_map = {
-        config["business_types"]["planned"]: "Planned maintenance",
-        config["business_types"]["forced"]: "Forced unavailability",
+        entso_e_config.get("business_types", {}).get(
+            "planned", "A53"
+        ): "Planned maintenance",
+        entso_e_config.get("business_types", {}).get(
+            "forced", "A54"
+        ): "Forced unavailability",
     }
     df["business_type_desc"] = df["business_type"].map(business_type_map)
 
@@ -650,23 +655,19 @@ if __name__ == "__main__":
         )
 
     # Get date parameters from config or use defaults
-    start_date = pd.to_datetime(
-        snakemake.config.get("unavailability_start_date", "2023-01-01")
-    )
-    end_date = pd.to_datetime(
-        snakemake.config.get("unavailability_end_date", "2023-12-31")
-    )
+    unavailability_config = snakemake.config.get("unavailability", {})
+    start_date = pd.to_datetime(unavailability_config.get("start_date", "2023-01-01"))
+    end_date = pd.to_datetime(unavailability_config.get("end_date", "2023-12-31"))
 
-    bidding_zones = snakemake.config.get("unavailability_bidding_zones", ["GB"])
-    business_types = snakemake.config.get(
-        "unavailability_business_types", ["planned", "forced"]
-    )
-    max_request_days = snakemake.config.get("max_request_days", 7)
+    bidding_zones = unavailability_config.get("bidding_zones", ["GB"])
+    business_types = unavailability_config.get("business_types", ["planned", "forced"])
+    max_request_days = unavailability_config.get("max_request_days", 7)
 
     # Get mapping dictionaries from config
-    uk_bidding_zones = snakemake.config.get("uk_bidding_zones", {})
-    business_types_map = snakemake.config.get("business_types", {})
-    doc_status_map = snakemake.config.get("doc_status", {})
+    entso_e_config = unavailability_config.get("entso_e", {})
+    uk_bidding_zones = entso_e_config.get("bidding_zones", {})
+    business_types_map = entso_e_config.get("business_types", {})
+    doc_status_map = entso_e_config.get("doc_status", {})
 
     # Initialize API client
     api_client = ENTSOEUnavailabilityAPI(api_key)
