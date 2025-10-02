@@ -1,7 +1,7 @@
 version = 1
-SPDX-PackageName = "PyPSA-Eur"
-SPDX-PackageSupplier = "Tom Brown <t.brown@tu-berlin.de>"
-SPDX-PackageDownloadLocation = "https://github.com/pypsa/pypsa-eur"
+SPDX-PackageName = "gb-open-market-model"
+SPDX-PackageSupplier = "Open Energy Transition gGmbH"
+SPDX-PackageDownloadLocation = "https://github.com/open-energy-transition/gb-open-market-model"
 
 [[annotations]]
 path = [
@@ -12,6 +12,13 @@ path = [
     "test/test_data/*",
 ]
 SPDX-FileCopyrightText = "The PyPSA-Eur Authors"
+SPDX-License-Identifier = "CC-BY-4.0"
+
+[[annotations]]
+path = [
+    "doc/gb-model/**",
+]
+SPDX-FileCopyrightText = "gb-open-market-model contributors"
 SPDX-License-Identifier = "CC-BY-4.0"
 
 [[annotations]]
