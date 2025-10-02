@@ -274,7 +274,7 @@ Societal Cost of Carbon
 -----------------------
 
 The societal cost of carbon comes into play if operating carbon emissions reduce as a result of a reinforcement option.
-In such cases, an economic benefit equal to the quantity of reduced emissions (compared to the base case run?) is added to the NPV calculation.
+In such cases, an economic benefit equal to the quantity of reduced emissions is added to the NPV calculation (assumption: compared to the base case run).
 `Traded carbon values <https://www.gov.uk/government/collections/carbon-valuation--2>`_ are likely used for this calculation.
 
 .. note::
@@ -299,7 +299,7 @@ The only criterion is that no option may appear in more than one region.
 The method for a region goes as follows:
 
 1. Re-dispatch run is undertaken with all proposed options disabled, to generate a *base case* which defines the reinforcement requirements on each boundary in the region for the first year (2023).
-2. All reinforcement options are ordered by priority to satisfy the requirements (by EISD? by magnitude of requirement met?).
+2. All reinforcement options are ordered by priority to satisfy the requirements.
 3. In order of priority, the options are added one-at-a-time and the 20-year re-dispatch model is re-run to get a new set of constraint costs.
 4. If multiple options are equal in priority, they are each modelled independently.
 5. For every option modelled at the same priority level, the NPV (constraint cost relative to base case combined with investment and delay costs) is calculated for introducing it at its EISD and for increasing delay years.
