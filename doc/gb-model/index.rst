@@ -37,6 +37,7 @@ The gb-open-market-model workflow is continuously tested for Linux, macOS and Wi
    :maxdepth: 2
    :caption: Configuration
 
+   methodology
    configuration
    costs
 
