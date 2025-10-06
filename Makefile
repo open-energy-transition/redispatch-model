@@ -76,6 +76,10 @@ install-pinned-macos: _conda_check
 
 
 # Run default tests
+gb-test:
+	snakemake compose_networks -n
+	echo "All GB tests completed successfully."
+
 test:
 	set -e
 	snakemake -call solve_elec_networks --configfile config/test/config.electricity.yaml

@@ -8,8 +8,6 @@ import subprocess
 from zipfile import ZipFile
 from pathlib import Path
 
-configfile: "config/gb-model/config.common.yaml"
-
 
 # Rule to download and extract ETYS boundary data
 rule retrieve_etys_boundary_data:
