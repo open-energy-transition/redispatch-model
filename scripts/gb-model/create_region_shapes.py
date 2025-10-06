@@ -12,13 +12,9 @@ The resulting regions are saved as a new GeoJSON file.
 """
 
 import logging
-import os
-from pathlib import Path
 
 import geopandas as gpd
-import pandas as pd
 from shapely.ops import split
-from shapely.geometry import Point
 
 from scripts._helpers import configure_logging, set_scenario_config
 
@@ -73,7 +69,9 @@ def align_crs(gdf1: gpd.GeoDataFrame, gdf2: gpd.GeoDataFrame) -> tuple:
     return gdf1, gdf2
 
 
-def create_regions_from_boundaries(country_shapes: gpd.GeoDataFrame, boundary_lines: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def create_regions_from_boundaries(
+    country_shapes: gpd.GeoDataFrame, boundary_lines: gpd.GeoDataFrame
+) -> gpd.GeoDataFrame:
     """
     Create regions by dividing country shapes using boundary lines.
 
@@ -110,7 +108,6 @@ def create_regions_from_boundaries(country_shapes: gpd.GeoDataFrame, boundary_li
 
     for idx, country in country_shapes.iterrows():
         logger.debug(f"Processing country/region {idx + 1}/{len(country_shapes)}")
-
 
         # Start with the original country geometry
         current_polygons = [country.geometry]
@@ -208,26 +205,36 @@ def create_regions_from_boundaries(country_shapes: gpd.GeoDataFrame, boundary_li
         original_area = country_shapes.geometry.area.sum()
         regions_area = regions_gdf.geometry.area.sum()
         area_difference = abs(original_area - regions_area)
-        area_loss_percent = (area_difference / original_area) * 100 if original_area > 0 else 0
+        area_loss_percent = (
+            (area_difference / original_area) * 100 if original_area > 0 else 0
+        )
 
-        logger.debug(f"Area comparison:")
+        logger.debug("Area comparison:")
         logger.debug(f"  Original area: {original_area / 1000000:.2f} km²")
         logger.debug(f"  Regions area:  {regions_area / 1000000:.2f} km²")
-        logger.debug(f"  Difference:    {area_difference / 1000000:.2f} km² ({area_loss_percent:.3f}%)")
+        logger.debug(
+            f"  Difference:    {area_difference / 1000000:.2f} km² ({area_loss_percent:.3f}%)"
+        )
 
         # raise exception if area loss is significant
         if area_loss_percent > snakemake.config["area_loss_tolerance_percent"]:
-            raise ValueError(f"Significant area loss detected after splitting: {area_loss_percent:.3f}%")
+            raise ValueError(
+                f"Significant area loss detected after splitting: {area_loss_percent:.3f}%"
+            )
 
         logger.debug(
             f"Successfully created {len(regions_gdf)} regions from {len(country_shapes)} original shapes"
         )
         return regions_gdf
     else:
-        raise ValueError("Failed to create any regions from the provided country shapes and boundary lines")
+        raise ValueError(
+            "Failed to create any regions from the provided country shapes and boundary lines"
+        )
 
 
-def drop_small_regions(regions_gdf: gpd.GeoDataFrame, min_area_threshold: float = 1000) -> gpd.GeoDataFrame:
+def drop_small_regions(
+    regions_gdf: gpd.GeoDataFrame, min_area_threshold: float = 1000
+) -> gpd.GeoDataFrame:
     """
     Clean up regions by removing very small polygons and fixing invalid geometries.
 
@@ -290,7 +297,7 @@ if __name__ == "__main__":
     # Filter out GB shapes
     country_shapes = country_shapes[country_shapes.name == "GB"]
 
-    # load ETYS boudary lines
+    # load ETYS boundary lines
     boundary_lines = load_boundary_lines(snakemake.input.etys_boundary_lines)
 
     # align CRS
@@ -299,7 +306,7 @@ if __name__ == "__main__":
     # Ensure boundary lines exist
     if boundary_lines.empty:
         raise ValueError("No boundary lines found in the provided ETYS data!")
-    
+
     # create regions from boundaries
     regions = create_regions_from_boundaries(country_shapes, boundary_lines)
     logger.debug(f"Created {len(regions)} initial regions")
@@ -307,11 +314,15 @@ if __name__ == "__main__":
         logger.debug(
             f"- Area range: {regions.geometry.area.min() / 1000000:.1f} - {regions.geometry.area.max() / 1000000:.1f} km²"
         )
-        logger.debug(f"- Average area: {regions.geometry.area.mean() / 1000000:.1f} km²")
+        logger.debug(
+            f"- Average area: {regions.geometry.area.mean() / 1000000:.1f} km²"
+        )
 
     # Clean regions with appropriate threshold
     min_area = snakemake.config["min_region_area"]
-    logger.debug(f"\nCleaning regions (removing regions < {min_area/1000000:.0f} km²)...")
+    logger.debug(
+        f"\nCleaning regions (removing regions < {min_area / 1000000:.0f} km²)..."
+    )
     cleaned_regions = drop_small_regions(regions, min_area_threshold=min_area)
 
     # save regions to output file
