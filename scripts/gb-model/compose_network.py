@@ -37,57 +37,82 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class CompositionContext:
+    """Context for network composition containing paths and configuration."""
+
     resources_root: Path
     countries: tuple[str, ...]
-    costs_path: Path | None
+    costs_path: Path
     costs_config: dict[str, Any]
     max_hours: dict[str, Any] | None
 
 
-def create_context(network_path: str, config: dict[str, Any]) -> CompositionContext:
+def create_context(
+    network_path: str,
+    costs_path: str,
+    countries: list[str],
+    costs_config: dict[str, Any],
+    max_hours: dict[str, Any] | None,
+) -> CompositionContext:
+    """
+    Create composition context from network path and configuration.
+
+    Parameters
+    ----------
+    network_path : str
+        Path to the input network file
+    costs_path : str
+        Path to the costs CSV file
+    countries : list[str]
+        List of country codes to include
+    costs_config : dict
+        Costs configuration dictionary
+    max_hours : dict or None
+        Maximum hours configuration
+
+    Returns
+    -------
+    CompositionContext
+        Context object with paths and configuration
+    """
     resources_root = Path(network_path).parents[1]
-    costs_cfg = copy.deepcopy(config.get("costs", {}))
-    cost_year = costs_cfg.get("year")
-    costs_path = (
-        resources_root / f"costs_{cost_year}.csv" if cost_year is not None else None
-    )
 
     return CompositionContext(
         resources_root=resources_root,
-        countries=tuple(config.get("countries", [])),
-        costs_path=costs_path,
-        costs_config=costs_cfg,
-        max_hours=config.get("electricity", {}).get("max_hours"),
+        countries=tuple(countries),
+        costs_path=Path(costs_path),
+        costs_config=copy.deepcopy(costs_config),
+        max_hours=max_hours,
     )
 
 
 def _load_powerplants(
-    powerplants_path: Path | None,
-    costs,
-    config: dict[str, Any],
+    powerplants_path: str,
+    costs: pd.DataFrame | None,
+    clustering_config: dict[str, Any],
 ) -> pd.DataFrame:
-    clustering_cfg = config.get("clustering", {})
-    consider_efficiency = clustering_cfg.get("consider_efficiency_classes", False)
-    aggregation_strategies = clustering_cfg.get("aggregation_strategies", {})
-    exclude_carriers = clustering_cfg.get("exclude_carriers", [])
+    """
+    Load and aggregate powerplant data.
 
-    columns = ["bus", "carrier", "p_nom", "max_hours"]
+    Parameters
+    ----------
+    powerplants_path : str
+        Path to powerplants CSV file
+    costs : pd.DataFrame or None
+        Cost data DataFrame
+    clustering_config : dict
+        Clustering configuration dictionary
 
-    if powerplants_path is None:
-        logger.info(
-            "No power plant input provided; continuing without existing capacities"
-        )
-        return pd.DataFrame(columns=columns)
-
-    if not powerplants_path.exists():
-        logger.warning(
-            "Power plant data %s not found; continuing without existing capacities",
-            powerplants_path,
-        )
-        return pd.DataFrame(columns=columns)
+    Returns
+    -------
+    pd.DataFrame
+        Aggregated powerplant data
+    """
+    consider_efficiency = clustering_config.get("consider_efficiency_classes", False)
+    aggregation_strategies = clustering_config.get("aggregation_strategies", {})
+    exclude_carriers = clustering_config.get("exclude_carriers", [])
 
     return load_and_aggregate_powerplants(
-        str(powerplants_path),
+        powerplants_path,
         costs,
         consider_efficiency_classes=consider_efficiency,
         aggregation_strategies=aggregation_strategies,
@@ -97,42 +122,67 @@ def _load_powerplants(
 
 def integrate_renewables(
     network: pypsa.Network,
-    config: dict[str, Any],
-    costs,
-    inputs: Mapping[str, str],
-    powerplants_path: Path | None,
-    hydro_capacities_path: Path | None,
+    electricity_config: dict[str, Any],
+    renewable_config: dict[str, Any],
+    clustering_config: dict[str, Any],
+    line_length_factor: float,
+    costs: pd.DataFrame | None,
+    renewable_profiles: dict[str, str],
+    powerplants_path: str,
+    hydro_capacities_path: str | None,
 ) -> None:
-    electricity_cfg = config.get("electricity", {})
-    renewable_carriers = list(electricity_cfg.get("renewable_carriers", []))
+    """
+    Integrate renewable generators into the network.
+
+    Parameters
+    ----------
+    network : pypsa.Network
+        Network to modify
+    electricity_config : dict
+        Electricity configuration dictionary
+    renewable_config : dict
+        Renewable configuration dictionary
+    clustering_config : dict
+        Clustering configuration dictionary
+    line_length_factor : float
+        Line length multiplication factor
+    costs : pd.DataFrame or None
+        Cost data (can be None for fixed capacity renewables)
+    renewable_profiles : dict
+        Mapping of carrier names to profile file paths
+    powerplants_path : str
+        Path to powerplants CSV file
+    hydro_capacities_path : str or None
+        Path to hydro capacities CSV file
+    """
+    renewable_carriers = list(electricity_config.get("renewable_carriers", []))
 
     if not renewable_carriers:
         logger.info("No renewable carriers configured; skipping integration")
         return
 
+    # Integrate renewables even without cost data (fixed capacities, zero marginal cost)
     if costs is None:
-        logger.warning("Cost data unavailable; skipping renewable integration")
-        return
+        logger.info(
+            "Cost data unavailable; integrating renewables with zero marginal costs"
+        )
 
-    extendable_carriers = copy.deepcopy(electricity_cfg.get("extendable_carriers", {}))
+    extendable_carriers = copy.deepcopy(electricity_config.get("extendable_carriers", {}))
     extendable_carriers.setdefault("Generator", [])
 
-    ppl = _load_powerplants(powerplants_path, costs, config)
+    ppl = _load_powerplants(powerplants_path, costs, clustering_config)
 
-    profile_paths = {
-        key: Path(value) for key, value in inputs.items() if key.startswith("profile_")
-    }
-
+    # Filter for non-hydro renewable carriers that have profiles
     available_non_hydro = [
         carrier
         for carrier in renewable_carriers
-        if carrier != "hydro" and f"profile_{carrier}" in profile_paths
+        if carrier != "hydro" and carrier in renewable_profiles
     ]
 
     missing_profiles = sorted(
         carrier
         for carrier in renewable_carriers
-        if carrier != "hydro" and f"profile_{carrier}" not in profile_paths
+        if carrier != "hydro" and carrier not in renewable_profiles
     )
     if missing_profiles:
         logger.warning(
@@ -143,17 +193,22 @@ def integrate_renewables(
     if available_non_hydro:
         landfall_lengths = {
             tech: settings.get("landfall_length")
-            for tech, settings in config.get("renewable", {}).items()
+            for tech, settings in renewable_config.items()
             if isinstance(settings, dict)
             and settings.get("landfall_length") is not None
         }
-        line_length_factor = config.get("lines", {}).get("length_factor", 1.0)
+
+        # Build profile paths dict with profile_ prefix as expected by attach_wind_and_solar
+        profile_paths = {
+            f"profile_{carrier}": renewable_profiles[carrier]
+            for carrier in available_non_hydro
+        }
 
         attach_wind_and_solar(
             network,
             costs,
             ppl,
-            {k: str(v) for k, v in profile_paths.items()},
+            profile_paths,
             available_non_hydro,
             extendable_carriers,
             line_length_factor,
@@ -163,27 +218,23 @@ def integrate_renewables(
     if "hydro" not in renewable_carriers:
         return
 
-    hydro_profile = profile_paths.get("profile_hydro")
-    if hydro_profile is None or not hydro_profile.exists():
+    if "hydro" not in renewable_profiles:
         logger.warning("Hydro profile not available; skipping hydro integration")
         return
 
-    if hydro_capacities_path is None or not hydro_capacities_path.exists():
-        logger.warning(
-            "Hydro capacities file %s missing; skipping hydro integration",
-            hydro_capacities_path,
-        )
+    if hydro_capacities_path is None:
+        logger.warning("Hydro capacities file missing; skipping hydro integration")
         return
 
-    hydro_cfg = copy.deepcopy(config.get("renewable", {}).get("hydro", {}))
+    hydro_cfg = copy.deepcopy(renewable_config.get("hydro", {}))
     carriers = hydro_cfg.pop("carriers", [])
 
     attach_hydro(
         network,
         costs,
         ppl,
-        str(hydro_profile),
-        str(hydro_capacities_path),
+        renewable_profiles["hydro"],
+        hydro_capacities_path,
         carriers,
         **hydro_cfg,
     )
@@ -193,6 +244,21 @@ def add_gb_components(
     n: pypsa.Network,
     context: CompositionContext,
 ) -> pypsa.Network:
+    """
+    Add GB-specific components and filter to target countries.
+
+    Parameters
+    ----------
+    n : pypsa.Network
+        Network to modify
+    context : CompositionContext
+        Composition context
+
+    Returns
+    -------
+    pypsa.Network
+        Modified network
+    """
     if context.countries:
         keep = n.buses.country.isin(context.countries)
         drop = n.buses.index[~keep]
@@ -209,17 +275,38 @@ def add_gb_components(
 
 def add_pypsaeur_components(
     n: pypsa.Network,
-    config: dict[str, Any],
+    electricity_config: dict[str, Any],
     context: CompositionContext,
-    costs,
+    costs: pd.DataFrame | None,
 ) -> pypsa.Network:
+    """
+    Add PyPSA-Eur components like grid connections and sanitize network.
+
+    Parameters
+    ----------
+    n : pypsa.Network
+        Network to modify
+    electricity_config : dict
+        Electricity configuration dictionary
+    context : CompositionContext
+        Composition context
+    costs : pd.DataFrame or None
+        Cost data
+
+    Returns
+    -------
+    pypsa.Network
+        Modified network
+    """
     if costs is not None:
         add_electricity_grid_connection(n, costs)
         n.meta.setdefault("gb_model", {})["costs_path"] = str(context.costs_path)
 
     sanitize_locations(n)
     try:
-        sanitize_carriers(n, config)
+        # Pass full config dict for sanitize_carriers (it needs various config sections)
+        full_config = {"electricity": electricity_config}
+        sanitize_carriers(n, full_config)
     except KeyError as exc:  # pragma: no cover - tolerate partial configs
         logger.debug("Skipping carrier sanitisation due to missing config: %s", exc)
     return n
@@ -229,6 +316,21 @@ def finalise_composed_network(
     n: pypsa.Network,
     context: CompositionContext,
 ) -> pypsa.Network:
+    """
+    Finalize network composition with topology and consistency checks.
+
+    Parameters
+    ----------
+    n : pypsa.Network
+        Network to finalize
+    context : CompositionContext
+        Composition context
+
+    Returns
+    -------
+    pypsa.Network
+        Finalized network
+    """
     n.determine_network_topology()
     meta = n.meta.setdefault("gb_model", {})
     meta["resources_root"] = str(context.resources_root)
@@ -240,23 +342,59 @@ def finalise_composed_network(
 def compose_network(
     network_path: str,
     output_path: str,
-    config: dict[str, Any],
-    inputs: Mapping[str, str],
+    costs_path: str,
+    powerplants_path: str,
+    hydro_capacities_path: str | None,
+    renewable_profiles: dict[str, str],
+    countries: list[str],
+    costs_config: dict[str, Any],
+    electricity_config: dict[str, Any],
+    clustering_config: dict[str, Any],
+    renewable_config: dict[str, Any],
+    lines_config: dict[str, Any],
 ) -> None:
+    """
+    Main composition function to create GB market model network.
+
+    Parameters
+    ----------
+    network_path : str
+        Path to input base network
+    output_path : str
+        Path to save composed network
+    costs_path : str
+        Path to costs CSV file
+    powerplants_path : str
+        Path to powerplants CSV file
+    hydro_capacities_path : str or None
+        Path to hydro capacities CSV file
+    renewable_profiles : dict
+        Mapping of carrier names to profile file paths
+    countries : list[str]
+        List of country codes to include
+    costs_config : dict
+        Costs configuration dictionary
+    electricity_config : dict
+        Electricity configuration dictionary
+    clustering_config : dict
+        Clustering configuration dictionary
+    renewable_config : dict
+        Renewable configuration dictionary
+    lines_config : dict
+        Lines configuration dictionary
+    """
     network = pypsa.Network(network_path)
-    context = create_context(network_path, config)
-    if "tech_costs" in inputs:
-        context.costs_path = Path(inputs["tech_costs"])
+    max_hours = electricity_config.get("max_hours")
+    context = create_context(network_path, costs_path, countries, costs_config, max_hours)
     add_gb_components(network, context)
 
     costs = None
-    costs_path = context.costs_path
-    if costs_path is not None and costs_path.exists():
+    if context.costs_path.exists():
         weights = getattr(network.snapshot_weightings, "objective", None)
         nyears = float(weights.sum()) / 8760.0 if weights is not None else 1.0
         try:
             costs = load_costs(
-                str(costs_path),
+                str(context.costs_path),
                 context.costs_config,
                 max_hours=context.max_hours,
                 nyears=nyears,
@@ -264,30 +402,24 @@ def compose_network(
         except Exception as exc:  # pragma: no cover - keep composing resilient
             logger.warning(
                 "Failed to load cost data from %s: %s",
-                costs_path,
+                context.costs_path,
                 exc,
             )
-    elif costs_path is not None:
-        logger.info(
-            "Cost data %s not found; skipping cost adjustments",
-            costs_path,
-        )
 
-    powerplants_path = Path(inputs["powerplants"]) if "powerplants" in inputs else None
-    hydro_capacities_path = (
-        Path(inputs["hydro_capacities"]) if "hydro_capacities" in inputs else None
-    )
-
+    line_length_factor = lines_config.get("length_factor", 1.0)
     integrate_renewables(
         network,
-        config,
+        electricity_config,
+        renewable_config,
+        clustering_config,
+        line_length_factor,
         costs,
-        inputs,
+        renewable_profiles,
         powerplants_path,
         hydro_capacities_path,
     )
 
-    add_pypsaeur_components(network, config, context, costs)
+    add_pypsaeur_components(network, electricity_config, context, costs)
     finalise_composed_network(network, context)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -303,9 +435,25 @@ if __name__ == "__main__":
     configure_logging(snakemake)
     set_scenario_config(snakemake)
 
+    # Extract renewable profiles from inputs
+    renewable_carriers = snakemake.params.electricity.get("renewable_carriers", [])
+    renewable_profiles = {
+        carrier: str(getattr(snakemake.input, f"profile_{carrier}"))
+        for carrier in renewable_carriers
+        if hasattr(snakemake.input, f"profile_{carrier}")
+    }
+
     compose_network(
         network_path=snakemake.input.network,
         output_path=snakemake.output.network,
-        config=snakemake.config,
-        inputs={k: str(v) for k, v in snakemake.input.items()},
+        costs_path=snakemake.input.tech_costs,
+        powerplants_path=snakemake.input.powerplants,
+        hydro_capacities_path=getattr(snakemake.input, "hydro_capacities", None),
+        renewable_profiles=renewable_profiles,
+        countries=snakemake.params.countries,
+        costs_config=snakemake.params.costs_config,
+        electricity_config=snakemake.params.electricity,
+        clustering_config=snakemake.params.clustering,
+        renewable_config=snakemake.params.renewable,
+        lines_config=snakemake.params.lines,
     )

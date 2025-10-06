@@ -56,6 +56,15 @@ rule manual_region_merger:
         "../scripts/gb-model/manual_region_merger.py"
 
 
+rule compose_networks:
+    input:
+        expand(
+            resources("networks/composed_{clusters}.nc"),
+            **config["scenario"],
+            run=config["run"]["name"]
+        )
+
+
 rule compose_network:
     input:
         unpack(input_profile_tech),
@@ -67,6 +76,13 @@ rule compose_network:
         hydro_capacities=ancient("data/hydro_capacities.csv"),
     output:
         network=resources("networks/composed_{clusters}.nc"),
+    params:
+        countries=config["countries"],
+        costs_config=config["costs"],
+        electricity=config["electricity"],
+        clustering=config["clustering"],
+        renewable=config["renewable"],
+        lines=config["lines"],
     log:
         logs("compose_network_{clusters}.log")
     resources:
