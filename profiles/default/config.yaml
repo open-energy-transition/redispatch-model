@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: gb-open-market-model contributors
+#
+# SPDX-License-Identifier: CC0-1.0
+
+software-deployment-method: conda
+cores: 1
