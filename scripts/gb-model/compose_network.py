@@ -126,7 +126,7 @@ def integrate_renewables(
     renewable_config: dict[str, Any],
     clustering_config: dict[str, Any],
     line_length_factor: float,
-    costs: pd.DataFrame | None,
+    costs: pd.DataFrame,
     renewable_profiles: dict[str, str],
     powerplants_path: str,
     hydro_capacities_path: str | None,
@@ -146,8 +146,8 @@ def integrate_renewables(
         Clustering configuration dictionary
     line_length_factor : float
         Line length multiplication factor
-    costs : pd.DataFrame or None
-        Cost data (can be None for fixed capacity renewables)
+    costs : pd.DataFrame
+        Cost data
     renewable_profiles : dict
         Mapping of carrier names to profile file paths
     powerplants_path : str
@@ -161,36 +161,18 @@ def integrate_renewables(
         logger.info("No renewable carriers configured; skipping integration")
         return
 
-    # Integrate renewables even without cost data (fixed capacities, zero marginal cost)
-    if costs is None:
-        logger.info(
-            "Cost data unavailable; integrating renewables with zero marginal costs"
-        )
+    if "hydro" not in renewable_carriers:
+        return
+
+    non_hydro_carriers = [carrier for carrier in renewable_carriers if carrier != "hydro"]
+    non_hydro_profiles = {k:v for k,v in renewable_profiles.items() if k != "profile_hydro"}
 
     extendable_carriers = copy.deepcopy(electricity_config.get("extendable_carriers", {}))
     extendable_carriers.setdefault("Generator", [])
 
     ppl = _load_powerplants(powerplants_path, costs, clustering_config)
 
-    # Filter for non-hydro renewable carriers that have profiles
-    available_non_hydro = [
-        carrier
-        for carrier in renewable_carriers
-        if carrier != "hydro" and carrier in renewable_profiles
-    ]
-
-    missing_profiles = sorted(
-        carrier
-        for carrier in renewable_carriers
-        if carrier != "hydro" and carrier not in renewable_profiles
-    )
-    if missing_profiles:
-        logger.warning(
-            "Renewable profiles missing for carriers %s; skipping them",
-            ", ".join(missing_profiles),
-        )
-
-    if available_non_hydro:
+    if renewable_profiles:
         landfall_lengths = {
             tech: settings.get("landfall_length")
             for tech, settings in renewable_config.items()
@@ -198,25 +180,17 @@ def integrate_renewables(
             and settings.get("landfall_length") is not None
         }
 
-        # Build profile paths dict with profile_ prefix as expected by attach_wind_and_solar
-        profile_paths = {
-            f"profile_{carrier}": renewable_profiles[carrier]
-            for carrier in available_non_hydro
-        }
 
         attach_wind_and_solar(
             network,
             costs,
             ppl,
-            profile_paths,
-            available_non_hydro,
+            non_hydro_profiles,
+            non_hydro_carriers,
             extendable_carriers,
             line_length_factor,
             landfall_lengths,
         )
-
-    if "hydro" not in renewable_carriers:
-        return
 
     if "hydro" not in renewable_profiles:
         logger.warning("Hydro profile not available; skipping hydro integration")
@@ -233,7 +207,7 @@ def integrate_renewables(
         network,
         costs,
         ppl,
-        renewable_profiles["hydro"],
+        renewable_profiles["profile_hydro"],
         hydro_capacities_path,
         carriers,
         **hydro_cfg,
@@ -392,19 +366,12 @@ def compose_network(
     if context.costs_path.exists():
         weights = getattr(network.snapshot_weightings, "objective", None)
         nyears = float(weights.sum()) / 8760.0 if weights is not None else 1.0
-        try:
-            costs = load_costs(
-                str(context.costs_path),
-                context.costs_config,
-                max_hours=context.max_hours,
-                nyears=nyears,
-            )
-        except Exception as exc:  # pragma: no cover - keep composing resilient
-            logger.warning(
-                "Failed to load cost data from %s: %s",
-                context.costs_path,
-                exc,
-            )
+        costs = load_costs(
+            str(context.costs_path),
+            context.costs_config,
+            max_hours=context.max_hours,
+            nyears=nyears,
+        )
 
     line_length_factor = lines_config.get("length_factor", 1.0)
     integrate_renewables(
@@ -422,7 +389,6 @@ def compose_network(
     add_pypsaeur_components(network, electricity_config, context, costs)
     finalise_composed_network(network, context)
 
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     network.export_to_netcdf(output_path)
 
 
@@ -436,12 +402,9 @@ if __name__ == "__main__":
     set_scenario_config(snakemake)
 
     # Extract renewable profiles from inputs
-    renewable_carriers = snakemake.params.electricity.get("renewable_carriers", [])
-    renewable_profiles = {
-        carrier: str(getattr(snakemake.input, f"profile_{carrier}"))
-        for carrier in renewable_carriers
-        if hasattr(snakemake.input, f"profile_{carrier}")
-    }
+    renewable_carriers = snakemake.params.electricity["renewable_carriers"]
+    renewable_profile_keys = [f"profile_{carrier}" for carrier in renewable_carriers]
+    renewable_profiles = {key: snakemake.input[key] for key in renewable_profile_keys}
 
     compose_network(
         network_path=snakemake.input.network,

@@ -56,15 +56,6 @@ rule manual_region_merger:
         "../scripts/gb-model/manual_region_merger.py"
 
 
-rule compose_networks:
-    input:
-        expand(
-            resources("networks/composed_{clusters}.nc"),
-            **config["scenario"],
-            run=config["run"]["name"]
-        )
-
-
 rule compose_network:
     input:
         unpack(input_profile_tech),
@@ -91,3 +82,12 @@ rule compose_network:
         "../envs/environment.yaml"
     script:
         "../scripts/gb-model/compose_network.py"
+
+
+rule compose_networks:
+    input:
+        expand(
+            resources("networks/composed_{clusters}.nc"),
+            **config["scenario"],
+            run=config["run"]["name"]
+        )
