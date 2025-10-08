@@ -55,7 +55,7 @@ jobs:
     - name: Download all artifacts
       uses: actions/download-artifact@v5
       with:
-        name: lockfiles-*
+        pattern: lockfiles-*
         path: envs/
         merge-multiple: true
 
