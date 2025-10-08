@@ -186,12 +186,6 @@ def retrieve_data_by_periods(
     for i, (period_start, period_end) in tqdm(
         enumerate(periods, 1), desc="Retrieving XML files", total=len(periods)
     ):
-        # Show progress every 10 periods or at start/end
-        if i == 1 or i == len(periods) or i % 10 == 0:
-            logger.info(
-                f"Progress: {i}/{len(periods)} periods ({(i / len(periods) * 100):.0f}%)"
-            )
-
         try:
             # Add period identifier to XML save directory
             period_xml_dir = (

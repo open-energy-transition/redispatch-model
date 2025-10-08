@@ -86,111 +86,82 @@ def parse_xml_content(xml_content: str, filename: str = "") -> list[dict]:
     """
     outages = []
 
-    try:
-        root = ET.fromstring(xml_content)
-        namespaces = {"ns": "urn:iec62325.351:tc57wg16:451-6:outagedocument:3:0"}
+    root = ET.fromstring(xml_content)
+    namespaces = {"ns": "urn:iec62325.351:tc57wg16:451-6:outagedocument:3:0"}
 
-        # Find all TimeSeries elements
-        timeseries_elements = root.findall(".//ns:TimeSeries", namespaces)
+    # Find all TimeSeries elements
+    timeseries_elements = root.findall(".//ns:TimeSeries", namespaces)
 
-        for ts in timeseries_elements:
-            outage_data = {}
+    xml_text_mapping = {
+        "business_type": ".//ns:businessType",
+        "bidding_zone": ".//ns:biddingZone_Domain.mRID",
+        "resource_mrid": ".//ns:production_RegisteredResource.mRID",
+        "resource_name": ".//ns:production_RegisteredResource.name",
+        "resource_location": ".//ns:production_RegisteredResource.location.name",
+        "resource_type": ".//ns:production_RegisteredResource.pSRType.psrType",
+        "psr_mrid": ".//ns:production_RegisteredResource.pSRType.powerSystemResources.mRID",
+        "psr_name": ".//ns:production_RegisteredResource.pSRType.powerSystemResources.name",
+        "nominal_power": ".//ns:production_RegisteredResource.pSRType.powerSystemResources.nominalP",
+    }
+    for ts in timeseries_elements:
+        outage_data = {
+            k: _get_text(ts, v, namespaces) for k, v in xml_text_mapping.items()
+        }
 
-            # TimeSeries information
-            outage_data["business_type"] = _get_text(
-                ts, ".//ns:businessType", namespaces
-            )
-            outage_data["bidding_zone"] = _get_text(
-                ts, ".//ns:biddingZone_Domain.mRID", namespaces
-            )
+        outage_data["nominal_power_mw"] = (
+            float(outage_data["nominal_power"])
+            if outage_data["nominal_power"]
+            else None
+        )
 
-            # Resource information
-            outage_data["resource_mrid"] = _get_text(
-                ts, ".//ns:production_RegisteredResource.mRID", namespaces
-            )
-            outage_data["resource_name"] = _get_text(
-                ts, ".//ns:production_RegisteredResource.name", namespaces
-            )
-            outage_data["resource_location"] = _get_text(
-                ts, ".//ns:production_RegisteredResource.location.name", namespaces
-            )
-            outage_data["resource_type"] = _get_text(
-                ts, ".//ns:production_RegisteredResource.pSRType.psrType", namespaces
-            )
+        # Time periods from TimeSeries level
+        start_date = _get_text(ts, ".//ns:start_DateAndOrTime.date", namespaces)
+        start_time = _get_text(ts, ".//ns:start_DateAndOrTime.time", namespaces)
+        end_date = _get_text(ts, ".//ns:end_DateAndOrTime.date", namespaces)
+        end_time = _get_text(ts, ".//ns:end_DateAndOrTime.time", namespaces)
 
-            # Power system resource details
-            outage_data["psr_mrid"] = _get_text(
-                ts,
-                ".//ns:production_RegisteredResource.pSRType.powerSystemResources.mRID",
-                namespaces,
-            )
-            outage_data["psr_name"] = _get_text(
-                ts,
-                ".//ns:production_RegisteredResource.pSRType.powerSystemResources.name",
-                namespaces,
-            )
-            nominal_power = _get_text(
-                ts,
-                ".//ns:production_RegisteredResource.pSRType.powerSystemResources.nominalP",
-                namespaces,
-            )
-            outage_data["nominal_power_mw"] = (
-                float(nominal_power) if nominal_power else None
-            )
+        if start_date and start_time:
+            outage_data["start_time"] = pd.to_datetime(f"{start_date} {start_time}")
+        if end_date and end_time:
+            outage_data["end_time"] = pd.to_datetime(f"{end_date} {end_time}")
 
-            # Time periods from TimeSeries level
-            start_date = _get_text(ts, ".//ns:start_DateAndOrTime.date", namespaces)
-            start_time = _get_text(ts, ".//ns:start_DateAndOrTime.time", namespaces)
-            end_date = _get_text(ts, ".//ns:end_DateAndOrTime.date", namespaces)
-            end_time = _get_text(ts, ".//ns:end_DateAndOrTime.time", namespaces)
+        # Process Available_Period elements
+        available_periods = ts.findall(".//ns:Available_Period", namespaces)
 
-            if start_date and start_time:
-                outage_data["start_time"] = pd.to_datetime(f"{start_date} {start_time}")
-            if end_date and end_time:
-                outage_data["end_time"] = pd.to_datetime(f"{end_date} {end_time}")
+        if available_periods:
+            for period in available_periods:
+                period_data = outage_data.copy()
 
-            # Process Available_Period elements
-            available_periods = ts.findall(".//ns:Available_Period", namespaces)
+                # Extract data points
+                points = period.findall(".//ns:Point", namespaces)
+                if points:
+                    quantities: list[float] = []
+                    for point in points:
+                        qty = _get_text(point, ".//ns:quantity", namespaces)
+                        if qty:
+                            quantities.append(float(qty))
 
-            if available_periods:
-                for period in available_periods:
-                    period_data = outage_data.copy()
+                    if quantities:
+                        period_data["min_available_mw"] = min(quantities)
+                        period_data["max_available_mw"] = max(quantities)
+                        period_data["avg_available_mw"] = sum(quantities) / len(
+                            quantities
+                        )
+                        period_data["num_data_points"] = len(quantities)
 
-                    # Extract data points
-                    points = period.findall(".//ns:Point", namespaces)
-                    if points:
-                        quantities = []
-                        for point in points:
-                            qty = _get_text(point, ".//ns:quantity", namespaces)
-                            if qty:
-                                quantities.append(float(qty))
-
-                        if quantities:
-                            period_data["min_available_mw"] = min(quantities)
-                            period_data["max_available_mw"] = max(quantities)
-                            period_data["avg_available_mw"] = sum(quantities) / len(
-                                quantities
+                        # Calculate unavailable capacity
+                        if outage_data["nominal_power_mw"]:
+                            period_data["min_unavailable_mw"] = max(
+                                0, outage_data["nominal_power_mw"] - max(quantities)
                             )
-                            period_data["num_data_points"] = len(quantities)
+                            period_data["max_unavailable_mw"] = max(
+                                0, outage_data["nominal_power_mw"] - min(quantities)
+                            )
 
-                            # Calculate unavailable capacity
-                            if outage_data["nominal_power_mw"]:
-                                period_data["min_unavailable_mw"] = max(
-                                    0, outage_data["nominal_power_mw"] - max(quantities)
-                                )
-                                period_data["max_unavailable_mw"] = max(
-                                    0, outage_data["nominal_power_mw"] - min(quantities)
-                                )
-
-                    outages.append(period_data)
-            else:
-                # No Available_Period elements, just add the TimeSeries data
-                outages.append(outage_data)
-
-    except ET.ParseError as e:
-        logger.error(f"Failed to parse XML {filename}: {e}")
-    except Exception as e:
-        logger.error(f"Error processing XML {filename}: {e}")
+                outages.append(period_data)
+        else:
+            # No Available_Period elements, just add the TimeSeries data
+            outages.append(outage_data)
 
     return outages
 
