@@ -7,6 +7,7 @@ on:
   push:
     paths:
     - envs/**/*.yaml
+    - .github/workflows/update-gb-model-pinned-env.yaml
   schedule:
   - cron: "0 8 1,16 * *" # Bi-weekly
 
