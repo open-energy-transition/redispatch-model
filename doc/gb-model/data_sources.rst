@@ -13,6 +13,14 @@ The following table provides an overview of the data sources used exclusively in
 For data sources used in PyPSA-Eur, see `this page <../data_sources.html>`_.
 Different licenses apply to the data sources.
 
-For data source
-.. toctree::
-   :maxdepth: 1
+---------------------------------
+The Future Energy Scenarios (FES)
+---------------------------------
+
+`The FES <https://www.neso.energy/publications/future-energy-scenarios-fes>`_ is the primary data source for defining the model, both for GB and other European countries.
+Here, we use the 2021 FES data workbook.
+Tables from the workbook we use are:
+
+- BB1: Building Block Data
+- SV.34: Installed BECCS generation capacity (GW)
+

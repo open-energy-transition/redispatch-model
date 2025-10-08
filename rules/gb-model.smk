@@ -10,13 +10,15 @@ from pathlib import Path
 
 
 # Rule to download and extract ETYS boundary data
-rule retrieve_etys_boundary_data:
+rule download_data:
+    message:
+        "Download {wildcards.gb_data} GB model data."
     output:
-        boundary_shp="data/gb-model/etys-boundary-gis-data.zip",
+        downloaded="data/gb-model/downloaded/{gb_data}",
     params:
-        url=config["urls"]["gb-etys-boundaries"],
+        url=lambda wildcards: config["urls"][Path(wildcards.gb_data).stem],
     log:
-        logs("retrieve_etys_boundary_data.log"),
+        logs("download_{gb_data}.log"),
     localrule: True
     conda:
         "../envs/gb-model/workflow.yaml"
@@ -28,7 +30,7 @@ rule retrieve_etys_boundary_data:
 rule create_region_shapes:
     input:
         country_shapes=resources("country_shapes.geojson"),
-        etys_boundary_lines=rules.retrieve_etys_boundary_data.output.boundary_shp,
+        etys_boundary_lines="data/gb-model/downloaded/gb-etys-boundaries.zip",
     output:
         raw_region_shapes=resources("raw_region_shapes.geojson"),
     log:
@@ -95,23 +97,9 @@ rule compose_networks:
         ),
 
 
-rule download_transmission_availability_pdf:
-    output:
-        pdf_report="data/gb-model/transmission-availability.pdf",
-    params:
-        url=config["urls"]["transmission-availability"],
-    log:
-        logs("transmission_availability.log"),
-    localrule: True
-    conda:
-        "../envs/gb-model/workflow.yaml"
-    shell:
-        "curl -sSLvo {output} {params.url}"
-
-
 rule extract_transmission_availability:
     input:
-        pdf_report=rules.download_transmission_availability_pdf.output.pdf_report,
+        pdf_report="data/gb-model/downloaded/transmission-availability.pdf",
     output:
         csv=resources("transmission_availability.csv"),
     log:
@@ -120,3 +108,20 @@ rule extract_transmission_availability:
         "../envs/gb-model/workflow.yaml"
     script:
         "../scripts/gb-model/extract_transmission_availability.py"
+
+
+rule extract_fes_workbook_sheet:
+    message:
+        "Extract FES workbook sheet {wildcards.fes_sheet} and process into machine-readable, 'tidy' dataframe format according to defined configuration."
+    input:
+        workbook="data/gb-model/downloaded/fes-workbook.xlsx",
+    output:
+        csv=resources("fes/{fes_sheet}.csv"),
+    params:
+        sheet_extract_config=lambda wildcards: config["fes-sheet-config"][
+            wildcards.fes_sheet
+        ],
+    log:
+        logs("extract_fes_{fes_sheet}.log"),
+    script:
+        "../scripts/gb-model/extract_fes_sheet.py"

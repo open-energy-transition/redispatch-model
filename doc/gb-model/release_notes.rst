@@ -12,6 +12,7 @@ Release Notes
 Upcoming Release
 ================
 
+- Add FES workbook data download and sheet extraction rule (#50).
 - Restructured documentation.
 - Added modelling methodology documentation (#20).
 - Added GB custom geographic boundary rule and script (#13).

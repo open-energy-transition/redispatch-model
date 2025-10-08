@@ -44,7 +44,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         # all are uploaded to the same artifact as they will have different names for each platform so won't clash.
-        name: lockfiles
+        name: lockfiles-${{ matrix.os }}
         path: envs/**/*.pin.txt
 
   create-pull-request:
@@ -55,8 +55,9 @@ jobs:
     - name: Download all artifacts
       uses: actions/download-artifact@v5
       with:
-        name: lockfiles
+        name: lockfiles-*
         path: envs/
+        merge-multiple: true
 
     - name: Create Pull Request
       uses: peter-evans/create-pull-request@v7
