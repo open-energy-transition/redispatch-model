@@ -45,6 +45,7 @@ rule create_region_shapes:
 rule manual_region_merger:
     input:
         raw_region_shapes=rules.create_region_shapes.output.raw_region_shapes,
+        country_shapes=resources("country_shapes.geojson"),
     output:
         merged_shapes=resources("merged_shapes.geojson"),
     log:

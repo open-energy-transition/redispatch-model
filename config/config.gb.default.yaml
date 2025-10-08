@@ -22,13 +22,13 @@ scenario:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 countries:
-  # - "BE"
-  # - "DK"
-  # - "FR"
-- "GB"
-  # - "IE"
-  # - "NL"
-  # - "NO"
+  - "BE"
+  - "DK"
+  - "FR"
+  - "GB"
+  - "IE"
+  - "NL"
+  - "NO"
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
