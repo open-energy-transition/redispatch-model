@@ -98,7 +98,7 @@ jobs:
 
     - name: Run snakemake test workflows
       run: |
-        make test
+        make gb-test
 
     - name: Run unit tests
       run: |

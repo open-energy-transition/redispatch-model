@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Open Energy Transition gGmbH and contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+# SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
 #
 # SPDX-License-Identifier: MIT
 
@@ -641,7 +641,7 @@ if __name__ == "__main__":
                 busmap,
                 snakemake.input.admin_shapes,
             )
-        elif mode == "custom_busshapes":
+        elif mode in ["custom_busshapes", "gb_shapes"]:
             n.determine_network_topology()
             custom_shapes = gpd.read_file(snakemake.input.custom_busshapes)
             custom_busmap = busmap_from_shapes(

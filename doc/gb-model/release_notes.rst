@@ -12,10 +12,10 @@ Release Notes
 Upcoming Release
 ================
 
-* Add rule 'retrieve_unavailability_data' to Snakemake workflow for fetching unavailability data from ENTSO-E. (https://github.com/open-energy-transition/GB-open-market-model/pull/43)
-
-* Applied pre-commit to the existing codes. (https://github.com/open-energy-transition/GB-open-market-model/pull/37)
-
-* Prepare template for documentation of the model. (https://github.com/open-energy-transition/GB-open-market-model/pull/27)
-
-* Added scripts of GIS shape creation into the workflow. (https://github.com/open-energy-transition/GB-open-market-model/pull/13)
+* Add rule 'retrieve_unavailability_data' to Snakemake workflow for fetching unavailability data from ENTSO-E. (#43)
+* Increase number of HTTP download retries to mitigate against Zenodo file retrieval timeouts.
+* Keep all retrieved data locally by default to reduce time spent re-downloading data on every run.
+* Add FES workbook data download and sheet extraction rule (#50).
+* Restructured documentation (#27).
+* Added modelling methodology documentation (#20).
+* Added GB custom geographic boundary rule and script (#13).

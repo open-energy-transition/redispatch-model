@@ -48,7 +48,6 @@ dependencies:
 - tqdm
 - pytz
 - jpype1
-- python-dotenv
 - pyxlsb
 - graphviz
 - geojson

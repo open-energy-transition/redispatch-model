@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Open Energy Transition gGmbH and contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+# SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
 #
 # SPDX-License-Identifier: MIT
 
@@ -625,6 +625,9 @@ def input_custom_busmap(w):
     if mode == "custom_busshapes":
         base_network = config_provider("electricity", "base_network")(w)
         custom_busshapes = f"data/busshapes/base_s_{w.clusters}_{base_network}.geojson"
+
+    if mode == "gb_shapes":
+        custom_busshapes =resources("merged_shapes.geojson"),
 
     return {
         "custom_busmap": custom_busmap,

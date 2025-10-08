@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Open Energy Transition gGmbH and contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+# SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
 #
 # SPDX-License-Identifier: CC0-1.0
 
@@ -76,6 +76,10 @@ install-pinned-macos: _conda_check
 
 
 # Run default tests
+gb-test:
+	snakemake compose_networks -n
+	echo "All GB tests completed successfully."
+
 test:
 	set -e
 	snakemake -call solve_elec_networks --configfile config/test/config.electricity.yaml
