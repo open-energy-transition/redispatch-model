@@ -17,8 +17,8 @@ Different licenses apply to the data sources.
 The Future Energy Scenarios (FES)
 ---------------------------------
 
-The FES is the primary data source for defining the model, both for GB and other European countries.
-Here, we use the 2021 FES workbook.
+`The FES <https://www.neso.energy/publications/future-energy-scenarios-fes>`_ is the primary data source for defining the model, both for GB and other European countries.
+Here, we use the 2021 FES data workbook.
 Tables from the workbook we use are:
 
 - BB1: Building Block Data
