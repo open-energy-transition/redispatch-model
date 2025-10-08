@@ -12,6 +12,8 @@ Release Notes
 Upcoming Release
 ================
 
+- Increase number of HTTP download retries to mitigate against Zenodo file retrieval timeouts.
+- Keep all retrieved data locally by default to reduce time spent re-downloading data on every run.
 - Add FES workbook data download and sheet extraction rule (#50).
 - Restructured documentation.
 - Added modelling methodology documentation (#20).
