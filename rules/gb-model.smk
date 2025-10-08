@@ -9,9 +9,6 @@ from zipfile import ZipFile
 from pathlib import Path
 
 
-configfile: "config/gb-model/config.common.yaml"
-
-
 # Rule to download and extract ETYS boundary data
 rule download_data:
     message:
@@ -50,6 +47,7 @@ rule create_region_shapes:
 rule manual_region_merger:
     input:
         raw_region_shapes=rules.create_region_shapes.output.raw_region_shapes,
+        country_shapes=resources("country_shapes.geojson"),
     output:
         merged_shapes=resources("merged_shapes.geojson"),
     log:
@@ -60,6 +58,43 @@ rule manual_region_merger:
         "../envs/gb-model/workflow.yaml"
     script:
         "../scripts/gb-model/manual_region_merger.py"
+
+
+rule compose_network:
+    input:
+        unpack(input_profile_tech),
+        network=resources("networks/base_s_{clusters}.nc"),
+        powerplants=resources("powerplants_s_{clusters}.csv"),
+        tech_costs=lambda w: resources(
+            f"costs_{config_provider('costs', 'year')(w)}.csv"
+        ),
+        hydro_capacities=ancient("data/hydro_capacities.csv"),
+    output:
+        network=resources("networks/composed_{clusters}.nc"),
+    params:
+        countries=config["countries"],
+        costs_config=config["costs"],
+        electricity=config["electricity"],
+        clustering=config["clustering"],
+        renewable=config["renewable"],
+        lines=config["lines"],
+    log:
+        logs("compose_network_{clusters}.log"),
+    resources:
+        mem_mb=4000,
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/gb-model/compose_network.py"
+
+
+rule compose_networks:
+    input:
+        expand(
+            resources("networks/composed_{clusters}.nc"),
+            **config["scenario"],
+            run=config["run"]["name"],
+        ),
 
 
 rule extract_transmission_availability:

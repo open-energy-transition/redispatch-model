@@ -11,7 +11,6 @@ localrules:
     solve_elec_networks,
     solve_sector_networks,
 
-
 rule cluster_networks:
     input:
         expand(

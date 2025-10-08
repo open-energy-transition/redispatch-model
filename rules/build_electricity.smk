@@ -626,6 +626,9 @@ def input_custom_busmap(w):
         base_network = config_provider("electricity", "base_network")(w)
         custom_busshapes = f"data/busshapes/base_s_{w.clusters}_{base_network}.geojson"
 
+    if mode == "gb_shapes":
+        custom_busshapes =resources("merged_shapes.geojson"),
+
     return {
         "custom_busmap": custom_busmap,
         "custom_busshapes": custom_busshapes,

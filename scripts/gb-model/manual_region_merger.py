@@ -480,7 +480,49 @@ def merge_regions(
     # Reset index
     result_gdf = result_gdf.reset_index(drop=True)
 
+    result_gdf["name"] = result_gdf["name"] + " " + result_gdf["numeric_id"].astype(str)
+
     logger.debug(f"Final result: {len(regions_gdf)} -> {len(result_gdf)} regions")
+    return result_gdf
+
+
+def append_country_shapes(
+    regions_gdf: gpd.GeoDataFrame, country_shapes_file: str
+) -> gpd.GeoDataFrame:
+    """
+    Append country shapes other than GB to the regions GeoDataFrame
+
+    Args:
+        regions_gdf: GeoDataFrame containing merged regions
+        country_shapes_file: Path to country shapes GeoJSON file
+
+    Returns:
+        GeoDataFrame with country shapes appended
+    """
+    logger.debug(f"Loading country shapes from: {country_shapes_file}")
+    country_shapes_gdf = gpd.read_file(country_shapes_file)
+    logger.debug(f"Loaded {len(country_shapes_gdf)} country shapes")
+
+    # Ensure CRS compatibility
+    if country_shapes_gdf.crs != regions_gdf.crs:
+        logger.debug(
+            f"Converting country shapes CRS from {country_shapes_gdf.crs} to {regions_gdf.crs}"
+        )
+        country_shapes_gdf = country_shapes_gdf.to_crs(regions_gdf.crs)
+
+    # assign country column
+    regions_gdf["country"] = "GB"
+    country_shapes_gdf["country"] = country_shapes_gdf["name"]
+
+    # Filter out GB country shape
+    country_shapes_gdf = country_shapes_gdf[country_shapes_gdf["name"] != "GB"]
+
+    # Concatenate the GeoDataFrames
+    result_gdf = pd.concat([regions_gdf, country_shapes_gdf], ignore_index=True)
+    logger.debug(
+        f"Appended country shapes: {len(regions_gdf)} regions + {len(country_shapes_gdf)} country shapes = {len(result_gdf)} total"
+    )
+
     return result_gdf
 
 
@@ -516,5 +558,9 @@ if __name__ == "__main__":
         f"Merging completed. Total regions after merging: {len(merged_regions)}"
     )
 
+    # Append country shapes
+    merged_regions = append_country_shapes(
+        merged_regions, snakemake.input.country_shapes
+    )
     # Save results
     save_regions(merged_regions, snakemake.output.merged_shapes)
