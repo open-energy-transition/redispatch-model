@@ -61,18 +61,36 @@ rule manual_region_merger:
 
 
 # Rule to retrieve generation unit unavailability data from ENTSO-E
-rule retrieve_unavailability_data:
+rule retrieve_entsoe_unavailability_data:
+    message: "Retrieve data from ENTSOE API for generator {wildcards.business_type} unavailability in {wildcards.zone} bidding zone"
     output:
-        planned_unavailability=resources("planned_unavailability.csv"),
-        forced_unavailability=resources("forced_unavailability.csv"),
+        xml_base_dir = directory("data/gb-model/entsoe_api/{zone}/{business_type}")
+    params:
+        unavailability = config["entsoe_unavailability"]
     log:
-        logs("retrieve_unavailability_data.log"),
+        logs("retrieve_entsoe_unavailability_data_{zone}_{business_type}.log"),
     resources:
-        mem_mb=2000,
+        mem_mb=1000,
     conda:
         "../envs/gb-model/workflow.yaml"
     script:
-        "../scripts/gb-model/retrieve_unavailability_data.py"
+        "../scripts/gb-model/retrieve_entsoe_unavailability_data.py"
+
+rule process_entsoe_unavailability_data:
+    input:
+        xml_base_dir = "data/gb-model/entsoe_api/{zone}/{business_type}"
+    output:
+        unavailability=resources("{zone}_{business_type}_generator_unavailability.csv"),
+    log:
+        logs("process_entsoe_unavailability_data_{zone}_{business_type}.log"),
+    params:
+        business_type_codes = config["entsoe_unavailability"]["api_params"]["business_types"]
+    resources:
+        mem_mb=1000,
+    conda:
+        "../envs/gb-model/workflow.yaml"
+    script:
+        "../scripts/gb-model/process_entsoe_unavailability_data.py"
 
 rule compose_network:
     input:
@@ -109,6 +127,17 @@ rule compose_networks:
             **config["scenario"],
             run=config["run"]["name"],
         ),
+        intermediate_data=[
+            resources("transmission_availability.csv"),
+            expand(resources("fes/{fes_sheet}.csv"), fes_sheet=config["fes-sheet-config"].keys()),
+            expand(
+                resources("{zone}_{business_type}_generator_unavailability.csv"),
+                zone=config["entsoe_unavailability"]["bidding_zones"],
+                business_type=config["entsoe_unavailability"]["business_types"]
+            ),
+            resources("gb_forced_generator_unavailability.csv"),
+            resources("merged_shapes.geojson")
+        ]
 
 
 rule extract_transmission_availability:
