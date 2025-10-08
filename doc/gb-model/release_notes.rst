@@ -11,3 +11,7 @@ Release Notes
 
 Upcoming Release
 ================
+
+- Restructured documentation.
+- Added modelling methodology documentation (#20).
+- Added GB custom geographic boundary rule and script (#13).
