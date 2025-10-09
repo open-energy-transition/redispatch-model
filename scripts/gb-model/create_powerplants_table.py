@@ -10,7 +10,6 @@ This is a script to extract powerplant capacities at the GSP level from the BB1 
 """
 
 import pandas as pd
-import geopandas as gpd
 import numpy as np
 import logging
 from scripts._helpers import configure_logging, set_scenario_config
@@ -85,6 +84,7 @@ if __name__ == "__main__":
 
     bb1_path=snakemake.input.bb1_sheet
     bb2_path=snakemake.input.bb2_sheet
+    gsp_coordinates_path=snakemake.input.gsp_coordinates
     fes_scenario=snakemake.params.scenario
     year=snakemake.params.year
 

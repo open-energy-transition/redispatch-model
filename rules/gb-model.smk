@@ -101,6 +101,7 @@ rule create_powerplants_table:
     input:
         bb1_sheet=resources("fes/BB1.csv"),
         bb2_sheet=resources("fes/BB2.csv"),
+        gsp_coordinates="data/gb-model/downloaded/gsp-coordinates.csv",
     output:
         csv=resources("gb-model/fes_powerplants.csv")
     log:
