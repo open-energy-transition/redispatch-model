@@ -90,3 +90,22 @@ rule extract_fes_workbook_sheet:
         logs("extract_fes_{fes_sheet}.log"),
     script:
         "../scripts/gb-model/extract_fes_sheet.py"
+
+
+rule create_powerplants_table:
+    message:
+        "Extract powerplant data GSP-wise from FES workbook sheet BB1",
+    params:
+        scenario=config["fes"]["fes_scenario"],
+        year=config["fes"]["year"],
+    input:
+        bb1_sheet=resources("fes/BB1.csv"),
+        bb2_sheet=resources("fes/BB2.csv"),
+    output:
+        csv=resources("gb-model/fes_powerplants.csv")
+    log:
+        logs("create_powerplants_table.log")
+    conda:
+        "../envs/gb-model/workflow.yaml"
+    script:
+        "../scripts/gb-model/create_powerplants_table.py"

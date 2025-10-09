@@ -70,3 +70,15 @@ fes-sheet-config:
     header: 0
     rename:
       columns: year
+
+  BB2:
+    usecols: "A:E"
+    skiprows: 2
+    index_col: [0,1,3]
+    header: 0
+    rename:
+      columns: Parameter
+
+fes:
+  fes_scenario: 'Leading The Way'
+  year: 2021
