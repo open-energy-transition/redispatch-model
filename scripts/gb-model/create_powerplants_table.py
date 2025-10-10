@@ -20,21 +20,24 @@ import geopandas as gpd
 
 logger = logging.getLogger(__name__)
 
-# Rename fueltype to PyPSA-Eur convention
-fuel_dict={
-    'Biomass & Energy Crops (including CHP) ':'biomass',
-    'CCGTs (non CHP)':'CCGT',
-    'Coal':'coal',
-    'Geothermal':'geothermal',
-    'Hydro':'hydro',
-    'Nuclear':'nuclear',
-    'OCGTs (non CHP)':'OCGT',
-    'Solar Generation':'solar'
-}
 
-# Convert full country name to ISO-2 convention
 def country_converter(country_list):
+    """
+        Convert full country name to ISO-2 convention
+    """
     return {x:coco.convert(x,to='ISO2') for x in country_list}
+
+
+def powerplant_set(fueltype,technology):
+    """
+        Function to categorize powerplant set 
+    """
+    if "CHP" in fueltype and "not CHP" not in fueltype:
+        return "CHP"
+    elif technology in ["Pumped Storage","Battery"]:
+        return "Store"
+    else:
+        return "PP"
 
 def parse_inputs(bb1_path, 
     bb2_path, 
@@ -105,6 +108,15 @@ def table_gb_capacities(df, bbid_tech_map, gsp_coord_dict):
                                     'DateIn','DateRetrofit','DateMothball','DateOut',
                                     'lat','lon','EIC','projectID'])
 
+
+    # Rename fueltype to PyPSA-Eur convention
+    fueltype_dict={
+        'Biomass & Energy Crops (including CHP)':'biomass',
+        'CCGTs (non CHP)':'CCGT',
+        'OCGTs (non CHP)':'OCGT',
+        'Solar Generation':'solar'
+    }
+
     df = df.drop(columns=['FES Scenario','year','Unit'])
     for bb_id in bbid_tech_map.keys():
         df_ppl=df.loc[df['Building Block ID Number'] == bb_id]
@@ -114,16 +126,10 @@ def table_gb_capacities(df, bbid_tech_map, gsp_coord_dict):
 
         df_ppl['Name']=bb_id+" "+df_ppl['GSP']
 
-        df_ppl['Fueltype']=fuel_dict[technology] if technology in fuel_dict.keys() else technology
+        df_ppl['Fueltype']=fueltype_dict[technology] if technology in fueltype_dict.keys() else technology
         df_ppl['Technology']=technology_detail
         df_ppl.rename(columns={'data':'Capacity'},inplace=True)
-
-        if 'non CHP' not in technology and 'CHP' in technology:
-            df_ppl['Set'] = 'CHP'
-        elif "hydro" in technology:
-            df_ppl['Set'] = 'Reservoir' #Check if this needs to be changed to run of river
-        else:
-            df_ppl['Set'] = 'PP'
+        df_ppl['Set']=powerplant_set(technology,technology_detail)
 
         df_ppl['lat']=df_ppl['GSP'].map(lambda x: gsp_coord_dict.get(x, {}).get('Latitude'))
         df_ppl['lon']=df_ppl['GSP'].map(lambda x: gsp_coord_dict.get(x, {}).get('Longitude'))
@@ -132,14 +138,31 @@ def table_gb_capacities(df, bbid_tech_map, gsp_coord_dict):
         if not df_ppl.empty:
             intersecting_columns=df_ppl.columns.intersection(df_capacity.columns)
             df_capacity=pd.concat([df_capacity,df_ppl[intersecting_columns]],ignore_index=True)
+    
     df_capacity['Country']='GB'
     df_capacity.loc[(df_capacity['Technology']=='Offshore Wind'),'Fueltype']='offwind-ac'
-    df_capacity.loc[(df_capacity['Technology'] in ['Onshore Wind <1MW','Onshore Wind >= 1MW']),'Fueltype']='onwind'
-
+    df_capacity.loc[(df_capacity['Technology'].isin(['Onshore Wind <1MW','Onshore Wind >=1MW'])),'Fueltype']='onwind'
     return df_capacity
 
-def add_eu_capacities(df_eu_supply, df_capacity, df_country_coord):
+def add_eu_capacities(df_eu_supply, df_capacity):
+    # Dictionary to rename fueltypes
+    fueltype_dict={
+        'Solar PV':'solar',
+        'Offshore Wind':'offwind-ac',
+        'Onshore Wind':'onwind',
+        'Pumped Hydro':'Hydro'
+    }
+    # dictionary to rename technology type
+    technology_dict={
+        'Reservoir Hydro':'Reservoir',
+    }
+
+    df_eu_supply["Fueltype"]=df_eu_supply["Fueltype"].map(lambda x: fueltype_dict[x] if x in fueltype_dict.keys() else x)
+    df_eu_supply["Technology"]=df_eu_supply["Technology"].map(lambda x: technology_dict[x] if x in technology_dict.keys() else x)
     df_eu_supply['Name']=df_eu_supply['Country']+" "+df_eu_supply["Fueltype"]
+    df_eu_supply['Set']=df_eu_supply.apply(lambda x: powerplant_set(x['Fueltype'],x['Technology']),axis=1)
+
+    # Common columns between df_capacity and df_eu_supply
     intersecting_columns=df_eu_supply.columns.intersection(df_capacity.columns)
 
     df_capacity=pd.concat([df_capacity,df_eu_supply[intersecting_columns]],ignore_index=True)
@@ -168,4 +191,6 @@ if __name__ == "__main__":
     logger.info("Tabulated the capacities into a table in PyPSA-Eur format")
 
     df_capacity=add_eu_capacities(df_eu_supply, df_capacity)
+    logger.info("Added the EU wide capacities to the capacity table")
+
     df_capacity.to_csv(snakemake.output.csv)
