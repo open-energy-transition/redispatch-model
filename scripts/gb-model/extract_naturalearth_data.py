@@ -16,6 +16,8 @@ import geopandas as gpd
 import os
 import shutil
 import logging
+import country_converter as coco
+
 from scripts._helpers import configure_logging, set_scenario_config
 
 
@@ -68,6 +70,9 @@ if __name__ == "__main__":
 
     output_df['latitude'] = output_df['rep_point'].y
     output_df['longitude'] = output_df['rep_point'].x
+
+    # Recomputing ISO_2 since some countries don't have the correct ISO_2 information in the ISO_A2 column (shown as -99)
+    output_df['ISO_2']=output_df['ADMIN'].apply(lambda x: coco.convert(x,to='ISO2'))
 
     output_df.to_csv(snakemake.output.country_coordinates)
     logger.info("Country wise representative points extracted")

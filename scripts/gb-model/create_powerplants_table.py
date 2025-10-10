@@ -44,7 +44,7 @@ def parse_inputs(bb1_path,
     bb2_path, 
     gsp_coordinates_path, 
     eu_supply_path, 
-    world_shapes_path,
+    country_coordinates_path,
     fes_scenario, 
     fes_year):
     """
@@ -55,6 +55,7 @@ def parse_inputs(bb1_path,
     * bb2_path - path of extracted sheet BB2 of the FES workbook
     * gsp_coordinates_path - path of the GSP supply point coordinates file
     * eu_supply_path - path of EU supply data file
+    * country_coordinates_path - path of Country coordinates data file
     * fes_scenario - FES scenario  
     * fes_year - Forecast year for the model
     """     
@@ -92,7 +93,12 @@ def parse_inputs(bb1_path,
         logger.error(f"EU supply Data available between years 2022-2050. No valid data for the year {fes_year}")
         raise ValueError
     df_eu_supply=df_eu_supply.reset_index().rename(columns={str(fes_year):'Capacity','SubType':'Fueltype','SubSubType':'Technology'})
-    return bbid_tech_map, df_bb1_ltw, gsp_coord_dict, df_eu_supply
+
+    df_country_coord=pd.read_csv(country_coordinates_path)
+    df_country_coord=df_country_coord.drop_duplicates(subset=['ISO_2'])
+    eu_coord_dict=df_country_coord.set_index('ISO_2')[['latitude','longitude']].to_dict(orient='index')
+
+    return bbid_tech_map, df_bb1_ltw, gsp_coord_dict, df_eu_supply, eu_coord_dict
 
 
 def table_gb_capacities(df, bbid_tech_map, gsp_coord_dict):
@@ -147,7 +153,15 @@ def table_gb_capacities(df, bbid_tech_map, gsp_coord_dict):
     df_capacity.loc[(df_capacity['Technology'].isin(['Onshore Wind <1MW','Onshore Wind >=1MW'])),'Fueltype']='onwind'
     return df_capacity
 
-def add_eu_capacities(df_eu_supply, df_capacity):
+def add_eu_capacities(df_eu_supply, df_capacity, eu_coord_dict):
+    """
+    Function to append aggregated capacities for each EU country represented in the model
+
+    Args:
+        * df_eu_supply: EU country wise aggregated powerplant dataframe
+        * df_capacity: Powerplant capacity table
+        * eu_coord_dict: dictionary to map a country to representative lat, lon
+    """
     # Dictionary to rename fueltypes
     fueltype_dict={
         'Solar PV':'solar',
@@ -164,6 +178,8 @@ def add_eu_capacities(df_eu_supply, df_capacity):
     df_eu_supply["Technology"]=df_eu_supply["Technology"].map(lambda x: technology_dict[x] if x in technology_dict.keys() else x)
     df_eu_supply['Name']=df_eu_supply['Country']+" "+df_eu_supply["Fueltype"]
     df_eu_supply['Set']=df_eu_supply.apply(lambda x: powerplant_set(x['Fueltype'],x['Technology']),axis=1)
+    df_eu_supply['lat']=df_eu_supply['Country'].map(lambda x: eu_coord_dict.get(x,{}).get('latitude'))
+    df_eu_supply['lon']=df_eu_supply['Country'].map(lambda x: eu_coord_dict.get(x,{}).get('longitude'))
 
     # Common columns between df_capacity and df_eu_supply
     intersecting_columns=df_eu_supply.columns.intersection(df_capacity.columns)
@@ -180,21 +196,24 @@ if __name__ == "__main__":
     configure_logging(snakemake)
     set_scenario_config(snakemake)
 
+    # Load the file paths
     bb1_path=snakemake.input.bb1_sheet
     bb2_path=snakemake.input.bb2_sheet
     gsp_coordinates_path=snakemake.input.gsp_coordinates
     eu_supply_path=snakemake.input.eu_supply
-    world_shapes_path=snakemake.input.world_shapes
+    country_coordinates_path=snakemake.input.country_coordinates
+
+    # Load all the params
     fes_scenario=snakemake.params.scenario
     fes_year=snakemake.params.year
 
-    bbid_tech_map, df_bb1_ltw,gsp_coord_dict,df_eu_supply=parse_inputs(bb1_path, bb2_path, gsp_coordinates_path, eu_supply_path, world_shapes_path, fes_scenario, fes_year)
+    bbid_tech_map, df_bb1_ltw,gsp_coord_dict,df_eu_supply,eu_coord_dict=parse_inputs(bb1_path, bb2_path, gsp_coordinates_path, eu_supply_path, country_coordinates_path, fes_scenario, fes_year)
     logger.info(f"Extracted the {fes_scenario} relevant data")
 
     df_capacity=table_gb_capacities(df_bb1_ltw, bbid_tech_map, gsp_coord_dict)
     logger.info("Tabulated the capacities into a table in PyPSA-Eur format")
 
-    df_capacity=add_eu_capacities(df_eu_supply, df_capacity)
+    df_capacity=add_eu_capacities(df_eu_supply, df_capacity, eu_coord_dict)
     logger.info("Added the EU wide capacities to the capacity table")
 
     df_capacity.to_csv(snakemake.output.csv)

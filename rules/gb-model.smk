@@ -116,11 +116,10 @@ rule create_powerplants_table:
         bb2_sheet=resources("fes/BB2.csv"),
         gsp_coordinates="data/gb-model/downloaded/gsp-coordinates.csv",
         eu_supply="data/gb-model/downloaded/eu-supply-table.csv",
+        country_coordinates=resources("country_coordinates.csv")
     output:
         csv=resources("fes_powerplants.csv")
     log:
         logs("create_powerplants_table.log")
-    conda:
-        "../envs/gb-model/workflow.yaml"
     script:
         "../scripts/gb-model/create_powerplants_table.py"
