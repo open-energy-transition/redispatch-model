@@ -39,10 +39,12 @@ def powerplant_set(fueltype,technology):
     else:
         return "PP"
 
+
 def parse_inputs(bb1_path, 
     bb2_path, 
     gsp_coordinates_path, 
     eu_supply_path, 
+    world_shapes_path,
     fes_scenario, 
     fes_year):
     """
@@ -77,6 +79,7 @@ def parse_inputs(bb1_path,
     gsp_coord_dict=df_gsp_coordinates.set_index('Name')[['Latitude','Longitude']].to_dict(orient='index')
 
     df_eu_supply=pd.read_csv(eu_supply_path)
+    # Add a check for the other scenarios as well
     if fes_scenario == 'Leading The Way':
         scenario_key='LW'
     df_eu_supply=df_eu_supply.query('`FES Scenario Alignment`.str.contains(@scenario_key)')\
@@ -181,10 +184,11 @@ if __name__ == "__main__":
     bb2_path=snakemake.input.bb2_sheet
     gsp_coordinates_path=snakemake.input.gsp_coordinates
     eu_supply_path=snakemake.input.eu_supply
+    world_shapes_path=snakemake.input.world_shapes
     fes_scenario=snakemake.params.scenario
     fes_year=snakemake.params.year
 
-    bbid_tech_map, df_bb1_ltw,gsp_coord_dict,df_eu_supply=parse_inputs(bb1_path, bb2_path, gsp_coordinates_path, eu_supply_path, fes_scenario, fes_year)
+    bbid_tech_map, df_bb1_ltw,gsp_coord_dict,df_eu_supply=parse_inputs(bb1_path, bb2_path, gsp_coordinates_path, eu_supply_path, world_shapes_path, fes_scenario, fes_year)
     logger.info(f"Extracted the {fes_scenario} relevant data")
 
     df_capacity=table_gb_capacities(df_bb1_ltw, bbid_tech_map, gsp_coord_dict)

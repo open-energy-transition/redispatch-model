@@ -92,9 +92,22 @@ rule extract_fes_workbook_sheet:
         "../scripts/gb-model/extract_fes_sheet.py"
 
 
+rule extract_naturalearth_data:
+    message:
+        "Extract natural earth shape data to get lat, lon information of EU countries"
+    input:
+        zip="data/gb-model/downloaded/world-shapes.zip",
+    output:
+        shape_files=expand(resources("naturalearth/ne_110m_admin_0_countries.{ext}"),ext=['shp','shx','dbf','prj']),
+        country_coordinates=resources("country_coordinates.csv")
+    log:
+        logs("extract_naturalearth_data.log"),
+    script:
+        "../scripts/gb-model/extract_naturalearth_data.py"
+
 rule create_powerplants_table:
     message:
-        "Extract powerplant data GSP-wise from FES workbook sheet BB1",
+        "Tabulate powerplant data GSP-wise from FES workbook sheet BB1 and EU supply data",
     params:
         scenario=config["fes"]["scenario"],
         year=config["fes"]["year"],
@@ -104,7 +117,7 @@ rule create_powerplants_table:
         gsp_coordinates="data/gb-model/downloaded/gsp-coordinates.csv",
         eu_supply="data/gb-model/downloaded/eu-supply-table.csv",
     output:
-        csv=resources("gb-model/fes_powerplants.csv")
+        csv=resources("fes_powerplants.csv")
     log:
         logs("create_powerplants_table.log")
     conda:
