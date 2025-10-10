@@ -16,3 +16,5 @@ Upcoming Release
 - Restructured documentation.
 - Added modelling methodology documentation (#20).
 - Added GB custom geographic boundary rule and script (#13).
+- Tabulated GSP wise powerplant capacities for GB (#4).
+- Tabulated EU country level aggregated powerplant capacities (#33)
