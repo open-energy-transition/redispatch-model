@@ -96,12 +96,13 @@ rule create_powerplants_table:
     message:
         "Extract powerplant data GSP-wise from FES workbook sheet BB1",
     params:
-        scenario=config["fes"]["fes_scenario"],
+        scenario=config["fes"]["scenario"],
         year=config["fes"]["year"],
     input:
         bb1_sheet=resources("fes/BB1.csv"),
         bb2_sheet=resources("fes/BB2.csv"),
         gsp_coordinates="data/gb-model/downloaded/gsp-coordinates.csv",
+        eu_supply="data/gb-model/downloaded/eu-supply-table.csv",
     output:
         csv=resources("gb-model/fes_powerplants.csv")
     log:

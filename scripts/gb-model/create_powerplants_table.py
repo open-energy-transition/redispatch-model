@@ -14,6 +14,9 @@ import numpy as np
 import logging
 from scripts._helpers import configure_logging, set_scenario_config
 import re
+import country_converter as coco
+import geopandas as gpd
+
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +32,16 @@ fuel_dict={
     'Solar Generation':'solar'
 }
 
-def parse_inputs(bb1_path, bb2_path, gsp_coordinates_path, fes_scenario, fes_year):
+# Convert full country name to ISO-2 convention
+def country_converter(country_list):
+    return {x:coco.convert(x,to='ISO2') for x in country_list}
+
+def parse_inputs(bb1_path, 
+    bb2_path, 
+    gsp_coordinates_path, 
+    eu_supply_path, 
+    fes_scenario, 
+    fes_year):
     """
     Parse the input data to the required format
 
@@ -37,8 +49,9 @@ def parse_inputs(bb1_path, bb2_path, gsp_coordinates_path, fes_scenario, fes_yea
     * bb1_path - path of extracted sheet BB1 of the FES workbook
     * bb2_path - path of extracted sheet BB2 of the FES workbook
     * gsp_coordinates_path - path of the GSP supply point coordinates file
+    * eu_supply_path - path of EU supply data file
     * fes_scenario - FES scenario  
-    * fes_year - Year for which model is built
+    * fes_year - Forecast year for the model
     """     
 
     df_bb2=pd.read_csv(bb2_path)
@@ -60,7 +73,20 @@ def parse_inputs(bb1_path, bb2_path, gsp_coordinates_path, fes_scenario, fes_yea
     df_gsp_coordinates=df_gsp_coordinates.drop_duplicates(subset=['Name'])
     gsp_coord_dict=df_gsp_coordinates.set_index('Name')[['Latitude','Longitude']].to_dict(orient='index')
 
-    return bbid_tech_map, df_bb1_ltw, gsp_coord_dict
+    df_eu_supply=pd.read_csv(eu_supply_path)
+    if fes_scenario == 'Leading The Way':
+        scenario_key='LW'
+    df_eu_supply=df_eu_supply.query('`FES Scenario Alignment`.str.contains(@scenario_key)')\
+                            .query('Variable == "Capacity (MW)"')
+    country_iso_code=country_converter(df_eu_supply['Country'].unique())
+    df_eu_supply['Country']=df_eu_supply['Country'].map(country_iso_code)
+    try:
+        df_eu_supply=df_eu_supply.set_index(list(df_eu_supply.columns[:8]))[str(fes_year)]
+    except:
+        logger.error(f"EU supply Data available between years 2022-2050. No valid data for the year {fes_year}")
+        raise ValueError
+    df_eu_supply=df_eu_supply.reset_index().rename(columns={str(fes_year):'Capacity','SubType':'Fueltype','SubSubType':'Technology'})
+    return bbid_tech_map, df_bb1_ltw, gsp_coord_dict, df_eu_supply
 
 
 def table_gb_capacities(df, bbid_tech_map, gsp_coord_dict):
@@ -107,9 +133,16 @@ def table_gb_capacities(df, bbid_tech_map, gsp_coord_dict):
             intersecting_columns=df_ppl.columns.intersection(df_capacity.columns)
             df_capacity=pd.concat([df_capacity,df_ppl[intersecting_columns]],ignore_index=True)
     df_capacity['Country']='GB'
-    df_capacity.loc[(df_capacity['Fueltype']=='Wind')&(df_capacity['Technology']=='Offshore Wind'),'Fueltype']='offwind-ac'
-    df_capacity.loc[(df_capacity['Fueltype']=='Wind')&(df_capacity['Technology']=='Onshore Wind <1MW'),'Fueltype']='onwind'
-    df_capacity.loc[(df_capacity['Fueltype']=='Wind')&(df_capacity['Technology']=='Onshore Wind >=1MW'),'Fueltype']='onwind'
+    df_capacity.loc[(df_capacity['Technology']=='Offshore Wind'),'Fueltype']='offwind-ac'
+    df_capacity.loc[(df_capacity['Technology'] in ['Onshore Wind <1MW','Onshore Wind >= 1MW']),'Fueltype']='onwind'
+
+    return df_capacity
+
+def add_eu_capacities(df_eu_supply, df_capacity, df_country_coord):
+    df_eu_supply['Name']=df_eu_supply['Country']+" "+df_eu_supply["Fueltype"]
+    intersecting_columns=df_eu_supply.columns.intersection(df_capacity.columns)
+
+    df_capacity=pd.concat([df_capacity,df_eu_supply[intersecting_columns]],ignore_index=True)
 
     return df_capacity
 
@@ -124,13 +157,15 @@ if __name__ == "__main__":
     bb1_path=snakemake.input.bb1_sheet
     bb2_path=snakemake.input.bb2_sheet
     gsp_coordinates_path=snakemake.input.gsp_coordinates
+    eu_supply_path=snakemake.input.eu_supply
     fes_scenario=snakemake.params.scenario
-    year=snakemake.params.year
+    fes_year=snakemake.params.year
 
-    bbid_tech_map, df_bb1_ltw,gsp_coord_dict=parse_inputs(bb1_path, bb2_path, gsp_coordinates_path, fes_scenario, year)
+    bbid_tech_map, df_bb1_ltw,gsp_coord_dict,df_eu_supply=parse_inputs(bb1_path, bb2_path, gsp_coordinates_path, eu_supply_path, fes_scenario, fes_year)
     logger.info(f"Extracted the {fes_scenario} relevant data")
 
     df_capacity=table_gb_capacities(df_bb1_ltw, bbid_tech_map, gsp_coord_dict)
     logger.info("Tabulated the capacities into a table in PyPSA-Eur format")
 
+    df_capacity=add_eu_capacities(df_eu_supply, df_capacity)
     df_capacity.to_csv(snakemake.output.csv)
