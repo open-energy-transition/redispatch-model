@@ -20,6 +20,7 @@ from scripts._helpers import (
 
 
 configfile: "config/config.default.yaml"
+configfile: "config/config.gb.default.yaml"
 configfile: "config/plotting.default.yaml"
 
 
@@ -49,7 +50,7 @@ localrules:
 
 
 wildcard_constraints:
-    clusters="[0-9]+(m|c)?|all|adm",
+    clusters="[0-9]+(m|c)?|all|adm|clustered",
     opts=r"[-+a-zA-Z0-9\.]*",
     sector_opts=r"[-+a-zA-Z0-9\.\s]*",
     planning_horizons=r"[0-9]{4}",
@@ -208,13 +209,13 @@ rule rulegraph:
         if [ -s {output.dot} ]; then
             echo "[Rule rulegraph] Generating PDF from DOT"
             dot -Tpdf -o {output.pdf} {output.dot} || {{ echo "Error: Failed to generate PDF. Is graphviz installed?" >&2; exit 1; }}
-            
+
             echo "[Rule rulegraph] Generating PNG from DOT"
             dot -Tpng -o {output.png} {output.dot} || {{ echo "Error: Failed to generate PNG. Is graphviz installed?" >&2; exit 1; }}
-            
+
             echo "[Rule rulegraph] Generating SVG from DOT"
             dot -Tsvg -o {output.svg} {output.dot} || {{ echo "Error: Failed to generate SVG. Is graphviz installed?" >&2; exit 1; }}
-            
+
             echo "[Rule rulegraph] Successfully generated all formats."
         else
             echo "[Rule rulegraph] Error: Failed to generate valid DOT content." >&2
@@ -246,13 +247,13 @@ rule filegraph:
         if [ -s {output.dot} ]; then
             echo "[Rule filegraph] Generating PDF from DOT"
             dot -Tpdf -o {output.pdf} {output.dot} || {{ echo "Error: Failed to generate PDF. Is graphviz installed?" >&2; exit 1; }}
-            
+
             echo "[Rule filegraph] Generating PNG from DOT"
             dot -Tpng -o {output.png} {output.dot} || {{ echo "Error: Failed to generate PNG. Is graphviz installed?" >&2; exit 1; }}
-            
+
             echo "[Rule filegraph] Generating SVG from DOT"
             dot -Tsvg -o {output.svg} {output.dot} || {{ echo "Error: Failed to generate SVG. Is graphviz installed?" >&2; exit 1; }}
-            
+
             echo "[Rule filegraph] Successfully generated all formats."
         else
             echo "[Rule filegraph] Error: Failed to generate valid DOT content." >&2

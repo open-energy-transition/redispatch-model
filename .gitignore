@@ -15,6 +15,9 @@ gurobi.log
 *.orig
 .idea
 
+# Environment variables
+.env
+
 /bak
 /resources
 /resources*
