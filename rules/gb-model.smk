@@ -135,7 +135,6 @@ rule compose_networks:
                 zone=config["entsoe_unavailability"]["bidding_zones"],
                 business_type=config["entsoe_unavailability"]["business_types"]
             ),
-            resources("gb_forced_generator_unavailability.csv"),
             resources("merged_shapes.geojson")
         ]
 

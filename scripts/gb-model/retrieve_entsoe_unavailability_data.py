@@ -245,7 +245,7 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from scripts._helpers import mock_snakemake
 
-        snakemake = mock_snakemake("retrieve_unavailability_data")
+        snakemake = mock_snakemake("retrieve_entsoe_unavailability_data")
 
     configure_logging(snakemake)
     set_scenario_config(snakemake)
