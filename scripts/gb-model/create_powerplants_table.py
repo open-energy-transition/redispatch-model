@@ -6,187 +6,96 @@
 """
 Capacity table generator.
 
-This is a script to extract powerplant capacities at the GSP level from the BB1 sheet of the FES workbook
+This is a script to GB/Eur capacities defined for / by the FES to fix `p_nom` in PyPSA-Eur.
 """
 
-import pandas as pd
-import numpy as np
 import logging
-from scripts._helpers import configure_logging, set_scenario_config
-import re
-import country_converter as coco
-import geopandas as gpd
 
+import pandas as pd
+
+from scripts._helpers import configure_logging, set_scenario_config
 
 logger = logging.getLogger(__name__)
 
 
-def country_converter(country_list):
-    """
-        Convert full country name to ISO-2 convention
-    """
-    return {x:coco.convert(x,to='ISO2') for x in country_list}
-
-
-def powerplant_set(fueltype,technology):
-    """
-        Function to categorize powerplant set 
-    """
-    if "CHP" in fueltype and "not CHP" not in fueltype:
-        return "CHP"
-    elif technology in ["Pumped Storage","Battery"]:
-        return "Store"
-    else:
-        return "PP"
-
-
-def parse_inputs(bb1_path, 
-    bb2_path, 
-    gsp_coordinates_path, 
-    eu_supply_path, 
-    country_coordinates_path,
-    fes_scenario, 
-    fes_year):
-    """
-    Parse the input data to the required format
-
-    Args:
-    * bb1_path - path of extracted sheet BB1 of the FES workbook
-    * bb2_path - path of extracted sheet BB2 of the FES workbook
-    * gsp_coordinates_path - path of the GSP supply point coordinates file
-    * eu_supply_path - path of EU supply data file
-    * country_coordinates_path - path of Country coordinates data file
-    * fes_scenario - FES scenario  
-    * fes_year - Forecast year for the model
-    """     
-
-    df_bb2=pd.read_csv(bb2_path)
-    df_bb2=df_bb2.query("Template == 'Generation '")
-    df_bb2=df_bb2.loc[df_bb2['Parameter'] == 'Building Block ID Number']
-    df_bb2[['Technology','Technology Detail']]=df_bb2[['Technology','Technology Detail']].apply(lambda x: x.str.strip(), axis=1)
-    bbid_tech_map=df_bb2.set_index('data')[['Technology','Technology Detail']].to_dict(orient='index')
-
-    df_bb1=pd.read_csv(bb1_path)
-    df_bb1_ltw=df_bb1.query("`FES Scenario` == @fes_scenario")\
-                    .query("Unit == 'MW'")\
-                    .query('`Building Block ID Number` == @keys',local_dict={'keys':list(bbid_tech_map.keys())})\
-                    .query('year == @fes_year')
-
-    df_gsp_coordinates=pd.read_csv(gsp_coordinates_path)
-    # Note
-    # The GSP's "East Claydon" and "Ferrybridge B" have duplicates
-    # the lat and lon information is the same but the GSP ID and GSP group are slightly different
-    df_gsp_coordinates=df_gsp_coordinates.drop_duplicates(subset=['Name'])
-    gsp_coord_dict=df_gsp_coordinates.set_index('Name')[['Latitude','Longitude']].to_dict(orient='index')
-
-    df_eu_supply=pd.read_csv(eu_supply_path)
-    # Add a check for the other scenarios as well
-    if fes_scenario == 'Leading The Way':
-        scenario_key='LW'
-    df_eu_supply=df_eu_supply.query('`FES Scenario Alignment`.str.contains(@scenario_key)')\
-                            .query('Variable == "Capacity (MW)"')
-    country_iso_code=country_converter(df_eu_supply['Country'].unique())
-    df_eu_supply['Country']=df_eu_supply['Country'].map(country_iso_code)
+def _map_names(
+    series: pd.Series, mapping: dict[str, str | dict], search_columns: list
+) -> str | None:
+    """Map carriers/sets to a standard set."""
     try:
-        df_eu_supply=df_eu_supply.set_index(list(df_eu_supply.columns[:8]))[str(fes_year)]
-    except:
-        logger.error(f"EU supply Data available between years 2022-2050. No valid data for the year {fes_year}")
-        raise ValueError
-    df_eu_supply=df_eu_supply.reset_index().rename(columns={str(fes_year):'Capacity','SubType':'Fueltype','SubSubType':'Technology'})
-
-    df_country_coord=pd.read_csv(country_coordinates_path)
-    df_country_coord=df_country_coord.drop_duplicates(subset=['ISO_2'])
-    eu_coord_dict=df_country_coord.set_index('ISO_2')[['latitude','longitude']].to_dict(orient='index')
-
-    return bbid_tech_map, df_bb1_ltw, gsp_coord_dict, df_eu_supply, eu_coord_dict
+        mapped: str | dict | None = mapping.get(series[search_columns[0]])
+    except IndexError:
+        breakpoint()
+    if isinstance(mapped, dict):
+        mapped = _map_names(series, mapped, search_columns[1:])
+    return mapped
 
 
-def table_gb_capacities(df, bbid_tech_map, gsp_coord_dict):
+def table_gb_capacities(
+    df: pd.DataFrame,
+    carrier_mapping: dict,
+    set_mapping: dict,
+) -> pd.DataFrame:
     """
     To table the powerplant capacities in a format required by PyPSA-Eur
 
     Args:
-    1. df - FES powerplant data
-    2. bbid_tech_map - dictionary to map Building Block ID numbers to the technology in FES workbook
-    3. gsp_coord_dict - nested dictionary of lat and lon coordinates for each GSP
-    """ 
+        df (pd.DataFrame): FES GSP-level powerplant data table
+        carrier_mapping (dict): dictionary to map technologies to PyPSA-Eur carriers names
+        set_mapping (dict): dictionary to map technologies to powerplantmatching set names
+    """
+    search_columns = ["Technology", "Technology Detail"]
+    df_cleaned = df.where(df.data > 0).dropna(subset=["data", "Latitude", "Longitude"])
+    df_cleaned["carrier"] = df_cleaned.apply(
+        _map_names, axis=1, mapping=carrier_mapping, search_columns=search_columns
+    )
+    df_cleaned["set"] = df_cleaned.apply(
+        _map_names, axis=1, mapping=set_mapping, search_columns=search_columns
+    ).fillna(set_mapping["_"])
 
-    df_capacity=pd.DataFrame(columns=['Name','Fueltype','Technology','Set',
-                                    'Country','Capacity','Efficiency','Duration',
-                                    'Volume_Mm3','DamHeight_m','StorageCapacity_MWh',
-                                    'DateIn','DateRetrofit','DateMothball','DateOut',
-                                    'lat','lon','EIC','projectID'])
+    df_cleaned = df_cleaned.dropna(subset=["carrier"])
 
+    df_capacity = (
+        df_cleaned.groupby(["bus", "year", "carrier", "set"])["data"]
+        .sum()
+        .rename("p_nom")
+        .reset_index()
+    )
 
-    # Rename fueltype to PyPSA-Eur convention
-    fueltype_dict={
-        'Biomass & Energy Crops (including CHP)':'biomass',
-        'CCGTs (non CHP)':'CCGT',
-        'OCGTs (non CHP)':'OCGT',
-        'Solar Generation':'solar'
-    }
-
-    df = df.drop(columns=['FES Scenario','year','Unit'])
-    for bb_id in bbid_tech_map.keys():
-        df_ppl=df.loc[df['Building Block ID Number'] == bb_id]
-
-        technology=bbid_tech_map.get(bb_id,{}).get('Technology')
-        technology_detail=bbid_tech_map.get(bb_id,{}).get('Technology Detail')
-
-        df_ppl['Name']=bb_id+" "+df_ppl['GSP']
-
-        df_ppl['Fueltype']=fueltype_dict[technology] if technology in fueltype_dict.keys() else technology
-        df_ppl['Technology']=technology_detail
-        df_ppl.rename(columns={'data':'Capacity'},inplace=True)
-        df_ppl['Set']=powerplant_set(technology,technology_detail)
-
-        df_ppl['lat']=df_ppl['GSP'].map(lambda x: gsp_coord_dict.get(x, {}).get('Latitude'))
-        df_ppl['lon']=df_ppl['GSP'].map(lambda x: gsp_coord_dict.get(x, {}).get('Longitude'))
-
-        df_ppl=df_ppl.query("Capacity != 0").query("GSP != 'Not Connected'")
-        if not df_ppl.empty:
-            intersecting_columns=df_ppl.columns.intersection(df_capacity.columns)
-            df_capacity=pd.concat([df_capacity,df_ppl[intersecting_columns]],ignore_index=True)
-    
-    df_capacity['Country']='GB'
-    df_capacity.loc[(df_capacity['Technology']=='Offshore Wind'),'Fueltype']='offwind-ac'
-    df_capacity.loc[(df_capacity['Technology'].isin(['Onshore Wind <1MW','Onshore Wind >=1MW'])),'Fueltype']='onwind'
     return df_capacity
 
-def add_eu_capacities(df_eu_supply, df_capacity, eu_coord_dict):
+
+def add_eur_capacities(
+    df: pd.DataFrame,
+    carrier_mapping: dict,
+    set_mapping: dict,
+) -> pd.DataFrame:
     """
-    Function to append aggregated capacities for each EU country represented in the model
+    Function to append aggregated capacities for each European countries represented in the model.
 
     Args:
-        * df_eu_supply: EU country wise aggregated powerplant dataframe
-        * df_capacity: Powerplant capacity table
-        * eu_coord_dict: dictionary to map a country to representative lat, lon
+        df (pd.DataFrame): European country-level aggregated powerplant dataframe
+        carrier_mapping (dict): dictionary to map technologies to PyPSA-Eur carriers names
+        set_mapping (dict): dictionary to map technologies to powerplantmatching set names
     """
-    # Dictionary to rename fueltypes
-    fueltype_dict={
-        'Solar PV':'solar',
-        'Offshore Wind':'offwind-ac',
-        'Onshore Wind':'onwind',
-        'Pumped Hydro':'Hydro'
-    }
-    # dictionary to rename technology type
-    technology_dict={
-        'Reservoir Hydro':'Reservoir',
-    }
+    search_columns = ["Type", "SubType", "SubSubType"]
+    df_cleaned = df[df["Variable"] == "Capacity (MW)"]
+    df_cleaned["carrier"] = df_cleaned.apply(
+        _map_names, axis=1, mapping=carrier_mapping, search_columns=search_columns
+    )
 
-    df_eu_supply["Fueltype"]=df_eu_supply["Fueltype"].map(lambda x: fueltype_dict[x] if x in fueltype_dict.keys() else x)
-    df_eu_supply["Technology"]=df_eu_supply["Technology"].map(lambda x: technology_dict[x] if x in technology_dict.keys() else x)
-    df_eu_supply['Name']=df_eu_supply['Country']+" "+df_eu_supply["Fueltype"]
-    df_eu_supply['Set']=df_eu_supply.apply(lambda x: powerplant_set(x['Fueltype'],x['Technology']),axis=1)
-    df_eu_supply['lat']=df_eu_supply['Country'].map(lambda x: eu_coord_dict.get(x,{}).get('latitude'))
-    df_eu_supply['lon']=df_eu_supply['Country'].map(lambda x: eu_coord_dict.get(x,{}).get('longitude'))
+    df_cleaned["set"] = df_cleaned.apply(
+        _map_names, axis=1, mapping=set_mapping, search_columns=search_columns
+    ).fillna(set_mapping["_"])
 
-    # Common columns between df_capacity and df_eu_supply
-    intersecting_columns=df_eu_supply.columns.intersection(df_capacity.columns)
-
-    df_capacity=pd.concat([df_capacity,df_eu_supply[intersecting_columns]],ignore_index=True)
-
+    df_cleaned = df_cleaned.dropna(subset=["carrier"])
+    df_capacity = (
+        df_cleaned.set_index(["bus", "year", "carrier", "set"])["data"]
+        .rename("p_nom")
+        .reset_index()
+    )
     return df_capacity
+
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -197,23 +106,23 @@ if __name__ == "__main__":
     set_scenario_config(snakemake)
 
     # Load the file paths
-    bb1_path=snakemake.input.bb1_sheet
-    bb2_path=snakemake.input.bb2_sheet
-    gsp_coordinates_path=snakemake.input.gsp_coordinates
-    eu_supply_path=snakemake.input.eu_supply
-    country_coordinates_path=snakemake.input.country_coordinates
+    df_gsp = pd.read_csv(snakemake.input.gsp_data).query("Template == 'Generation'")
+    df_eur = pd.read_csv(snakemake.input.eur_data)
 
     # Load all the params
-    fes_scenario=snakemake.params.scenario
-    fes_year=snakemake.params.year
+    carrier_mapping_gb = snakemake.params.carrier_mapping_gb
+    carrier_mapping_eur = snakemake.params.carrier_mapping_eur
+    set_mapping = snakemake.params.set_mapping
 
-    bbid_tech_map, df_bb1_ltw,gsp_coord_dict,df_eu_supply,eu_coord_dict=parse_inputs(bb1_path, bb2_path, gsp_coordinates_path, eu_supply_path, country_coordinates_path, fes_scenario, fes_year)
-    logger.info(f"Extracted the {fes_scenario} relevant data")
-
-    df_capacity=table_gb_capacities(df_bb1_ltw, bbid_tech_map, gsp_coord_dict)
+    df_capacity_gb = table_gb_capacities(df_gsp, carrier_mapping_gb, set_mapping)
     logger.info("Tabulated the capacities into a table in PyPSA-Eur format")
 
-    df_capacity=add_eu_capacities(df_eu_supply, df_capacity, eu_coord_dict)
+    df_capacity_eur = add_eur_capacities(
+        df_eur,
+        carrier_mapping_eur,
+        set_mapping,
+    )
     logger.info("Added the EU wide capacities to the capacity table")
 
-    df_capacity.to_csv(snakemake.output.csv)
+    df_capacity = pd.concat([df_capacity_gb, df_capacity_eur], ignore_index=True)
+    df_capacity.to_csv(snakemake.output.csv, index=False)

@@ -56,7 +56,7 @@ urls:
   transmission-availability: https://www.neso.energy/document/211021/download
   fes-workbook: https://www.neso.energy/document/199971/download # FES 2021 workbook
   gsp-coordinates: https://api.neso.energy/dataset/963525d6-5d83-4448-a99c-663f1c76330a/resource/41fb4ca1-7b59-4fce-b480-b46682f346c9/download/fes2021_regional_breakdown_gsp_info.csv
-  eu-supply-table: https://api.neso.energy/dataset/bd83ce0b-7b1e-4ff2-89e8-12d524c34d99/resource/6563801b-6da4-46e7-b147-3d81c0237779/download/fes2023_es2_v001.csv
+  eur-supply-table: https://api.neso.energy/dataset/bd83ce0b-7b1e-4ff2-89e8-12d524c34d99/resource/6563801b-6da4-46e7-b147-3d81c0237779/download/fes2023_es2_v001.csv
   world-shapes: http://naciscdn.org/naturalearth/packages/natural_earth_vector.zip  # This is a mirror link. The actual download link from natural earth is throwing errors
 target_crs: "EPSG:27700"
 area_loss_tolerance_percent: 0.01 # percentage of area loss tolerated when splitting regions
@@ -150,5 +150,88 @@ fes-sheet-config:
       columns: Parameter
 
 fes:
-  scenario: 'Leading The Way'
-  year: 2022
+  scenario:
+  - Leading The Way   # fes workbook
+  - CT & LW    # equivalent in the NESO european supply table
+  year_range_incl: [2022, 2042]
+  carrier_mapping_gb:
+    Biomass & Energy Crops (including CHP): biomass
+    Renewable Engines (Landfill Gas, Sewage Gas, Biogas): biomass
+    CCGTs (non CHP): CCGT
+    OCGTs (non CHP): OCGT
+    Solar Generation: solar
+    Wind:
+      Offshore Wind: offwind-ac
+      Onshore Wind <1MW: onwind
+      Onshore Wind >=1MW: onwind
+    Offshore-Wind (off-Grid): offwind-dc
+    Nuclear: nuclear
+    Hydro: ror # FIXME: should this be just "hydro?"
+    Storage:
+      Batteries: battery
+      Pumped Hydro: PHS # FIXME: should this be just "hydro?"
+    Coal: coal
+    Geothermal: geothermal
+    Hydrogen fuelled generation: hydrogen  # FIXME: something else here?
+    Non-renewable Engines (Diesel) (non CHP): oil
+    Non-renewable Engines (Gas) (non CHP): gas
+    ## Unmapped
+    # Marine
+    # Waste Incineration (including CHP)
+    # Non-renewable CHP
+
+  carrier_mapping_eur:
+    Storage:
+      Battery: battery
+      Pumped Hydro: PHS
+    Biomass: biomass
+    Gas:
+      CCGT: OCGT
+      Gas CHP: CCGT
+      OCGT: OCGT
+      Gas Reciprocating Engines: gas
+    Low Carbon:
+      Hydrogen: hydrogen # hydrogen-fueled turbine
+    CCS:
+      CCS Biomass: biomass
+      CCS Gas: gas
+    Coal:
+      Coal:
+        Coal: coal
+        Coal CHP: coal
+        IGCC: coal
+        Lignite: lignite
+        Lignite CHP: lignite
+        Peat CHP: lignite
+    Hydro:
+      Hydro:
+        Hydro: hydro
+        Reservoir Hydro: hydro
+        Reservoir Hydro with pumping: hydro
+        Run-of-river Hydro: ror
+        Small-Scale-Hydro: ror
+    Solar:
+      Solar PV:
+        Solar PV: solar
+    Onshore Wind: onwind
+    Other Thermal:
+      Fuel Oil: oil
+    Other Renewables:
+      Other Renewables:
+        Geothermal: geothermal
+    Nuclear: nuclear
+    Offshore Wind: offwind
+    ## unmapped
+    # Other Renewables | Other Renewables  | Other Renewables
+    # Waste
+    # Marine
+    # Solar | Solar PV | Solar CSP
+
+  set_mapping:
+    Biomass & Energy Crops (including CHP): CHP
+    Waste Incineration (including CHP): CHP
+    Biomass:
+      Biomass CHP: CHP
+    Non-renewable CHP: CHP
+    Storage: Store
+    _: PP
