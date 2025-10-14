@@ -32,7 +32,7 @@ rule create_region_shapes:
         country_shapes=resources("country_shapes.geojson"),
         etys_boundary_lines="data/gb-model/downloaded/gb-etys-boundaries.zip",
     output:
-        raw_region_shapes=resources("raw_region_shapes.geojson"),
+        raw_region_shapes=resources("gb-model/raw_region_shapes.geojson"),
     log:
         logs("raw_region_shapes.log"),
     resources:
@@ -49,7 +49,7 @@ rule manual_region_merger:
         raw_region_shapes=rules.create_region_shapes.output.raw_region_shapes,
         country_shapes=resources("country_shapes.geojson"),
     output:
-        merged_shapes=resources("merged_shapes.geojson"),
+        merged_shapes=resources("gb-model/merged_shapes.geojson"),
     log:
         logs("manual_region_merger.log"),
     resources:
@@ -82,7 +82,9 @@ rule process_entsoe_unavailability_data:
     input:
         xml_base_dir="data/gb-model/entsoe_api/{zone}/{business_type}",
     output:
-        unavailability=resources("{zone}_{business_type}_generator_unavailability.csv"),
+        unavailability=resources(
+            "gb-model/{zone}_{business_type}_generator_unavailability.csv"
+        ),
     log:
         logs("process_entsoe_unavailability_data_{zone}_{business_type}.log"),
     params:
@@ -101,7 +103,7 @@ rule extract_transmission_availability:
     input:
         pdf_report="data/gb-model/downloaded/transmission-availability.pdf",
     output:
-        csv=resources("transmission_availability.csv"),
+        csv=resources("gb-model/transmission_availability.csv"),
     log:
         logs("extract_transmission_availability.log"),
     conda:
@@ -116,7 +118,7 @@ rule extract_fes_workbook_sheet:
     input:
         workbook="data/gb-model/downloaded/fes-workbook.xlsx",
     output:
-        csv=resources("fes/{fes_sheet}.csv"),
+        csv=resources("gb-model/fes/{fes_sheet}.csv"),
     params:
         sheet_extract_config=lambda wildcards: config["fes-sheet-config"][
             wildcards.fes_sheet
@@ -137,7 +139,7 @@ rule process_fes_eur_data:
     input:
         eur_supply="data/gb-model/downloaded/eur-supply-table.csv",
     output:
-        csv=resources("fes_eur_country_data.csv"),
+        csv=resources("gb-model/national_eur_data.csv"),
     log:
         logs("process_fes_eur_data.log"),
     script:
@@ -156,7 +158,7 @@ rule process_fes_gsp_data:
         gsp_coordinates="data/gb-model/downloaded/gsp-coordinates.csv",
         regions=resources("merged_shapes.geojson"),
     output:
-        csv=resources("fes_gb_gsp_data.csv"),
+        csv=resources("gb-model/regional_gb_data.csv"),
     log:
         logs("process_fes_gsp_data.log"),
     script:
@@ -171,10 +173,10 @@ rule create_powerplants_table:
         carrier_mapping_eur=config["fes"]["carrier_mapping_eur"],
         set_mapping=config["fes"]["set_mapping"],
     input:
-        gsp_data=resources("fes_gb_gsp_data.csv"),
-        eur_data=resources("fes_eur_country_data.csv"),
+        gsp_data=resources("gb-model/regional_gb_data.csv"),
+        eur_data=resources("gb-model/national_eur_data.csv"),
     output:
-        csv=resources("fes_p_nom.csv"),
+        csv=resources("gb-model/fes_p_nom.csv"),
     log:
         logs("create_powerplants_table.log"),
     script:
@@ -191,18 +193,20 @@ rule compose_network:
         ),
         hydro_capacities=ancient("data/hydro_capacities.csv"),
         intermediate_data=[
-            resources("transmission_availability.csv"),
+            resources("gb-model/transmission_availability.csv"),
             expand(
-                resources("fes/{fes_sheet}.csv"),
+                resources("gb-model/fes/{fes_sheet}.csv"),
                 fes_sheet=config["fes-sheet-config"].keys(),
             ),
             expand(
-                resources("{zone}_{business_type}_generator_unavailability.csv"),
+                resources(
+                    "gb-model/{zone}_{business_type}_generator_unavailability.csv"
+                ),
                 zone=config["entsoe_unavailability"]["bidding_zones"],
                 business_type=config["entsoe_unavailability"]["business_types"],
             ),
-            resources("merged_shapes.geojson"),
-            resources("fes_p_nom.csv"),
+            resources("gb-model/merged_shapes.geojson"),
+            resources("gb-model/fes_p_nom.csv"),
         ],
     output:
         network=resources("networks/composed_{clusters}.nc"),

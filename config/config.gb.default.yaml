@@ -153,44 +153,37 @@ fes:
   - Leading The Way   # fes workbook
   - CT & LW    # equivalent in the NESO european supply table
   year_range_incl: [2022, 2042]
+
+  # Dict nesting can be up to two levels reflecting "Technology" and "Technology Details" columns
   carrier_mapping_gb:
     Biomass & Energy Crops (including CHP): biomass
-    Renewable Engines (Landfill Gas, Sewage Gas, Biogas): biomass
     CCGTs (non CHP): CCGT
-    OCGTs (non CHP): OCGT
-    Solar Generation: solar
-    Wind:
-      Offshore Wind: offwind-ac
-      Onshore Wind <1MW: onwind
-      Onshore Wind >=1MW: onwind
-    Offshore-Wind (off-Grid): offwind-dc
-    Nuclear: nuclear
+    Coal: coal
+    Geothermal: geothermal
     Hydro: ror # FIXME: should this be just "hydro?"
+    Hydrogen fuelled generation: hydrogen  # FIXME: something else here?
+    Marine: marine
+    Non-renewable Engines (Diesel) (non CHP): oil
+    Non-renewable Engines (Gas) (non CHP): gas
+    Nuclear: nuclear
+    OCGTs (non CHP): OCGT
+    Offshore-Wind (off-Grid): offwind
+    Renewable Engines (Landfill Gas, Sewage Gas, Biogas): biomass
+    Solar Generation: solar
     Storage:
       Batteries: battery
       Pumped Hydro: PHS # FIXME: should this be just "hydro?"
-    Coal: coal
-    Geothermal: geothermal
-    Hydrogen fuelled generation: hydrogen  # FIXME: something else here?
-    Non-renewable Engines (Diesel) (non CHP): oil
-    Non-renewable Engines (Gas) (non CHP): gas
+    Waste Incineration (including CHP): waste
+    Wind:
+      Offshore Wind: offwind
+      Onshore Wind <1MW: onwind
+      Onshore Wind >=1MW: onwind
     ## Unmapped
-    # Marine
-    # Waste Incineration (including CHP)
     # Non-renewable CHP
 
+  # Dict nesting can be up to three levels reflecting "Type", "SubType" and "SubSubType" columns
   carrier_mapping_eur:
-    Storage:
-      Battery: battery
-      Pumped Hydro: PHS
     Biomass: biomass
-    Gas:
-      CCGT: OCGT
-      Gas CHP: CCGT
-      OCGT: OCGT
-      Gas Reciprocating Engines: gas
-    Low Carbon:
-      Hydrogen: hydrogen # hydrogen-fueled turbine
     CCS:
       CCS Biomass: biomass
       CCS Gas: gas
@@ -202,6 +195,11 @@ fes:
         Lignite: lignite
         Lignite CHP: lignite
         Peat CHP: lignite
+    Gas:
+      CCGT: OCGT
+      Gas CHP: CCGT
+      OCGT: OCGT
+      Gas Reciprocating Engines: gas
     Hydro:
       Hydro:
         Hydro: hydro
@@ -209,22 +207,27 @@ fes:
         Reservoir Hydro with pumping: hydro
         Run-of-river Hydro: ror
         Small-Scale-Hydro: ror
-    Solar:
-      Solar PV:
-        Solar PV: solar
+    Low Carbon:
+      Hydrogen: hydrogen # hydrogen-fueled turbine
+    Marine: marine
+    Nuclear: nuclear
+    Offshore Wind: offwind
     Onshore Wind: onwind
     Other Thermal:
       Fuel Oil: oil
     Other Renewables:
       Other Renewables:
         Geothermal: geothermal
-    Nuclear: nuclear
-    Offshore Wind: offwind
+    Waste: waste
+    Solar:
+      Solar PV:
+        Solar PV: solar
+        Solar CSP: csp
+    Storage:
+      Battery: battery
+      Pumped Hydro: PHS
     ## unmapped
     # Other Renewables | Other Renewables  | Other Renewables
-    # Waste
-    # Marine
-    # Solar | Solar PV | Solar CSP
 
   set_mapping:
     Biomass & Energy Crops (including CHP): CHP

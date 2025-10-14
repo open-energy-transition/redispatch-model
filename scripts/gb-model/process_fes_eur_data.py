@@ -20,11 +20,6 @@ from scripts._helpers import configure_logging, set_scenario_config
 logger = logging.getLogger(__name__)
 
 
-def _strip_str(series: pd.Series) -> pd.Series:
-    """Strip whitespace from strings in a pandas Series."""
-    return series.str.strip() if series.dtype == "object" else series
-
-
 def parse_inputs(
     df: pd.DataFrame,
     fes_scenario: list[str],
