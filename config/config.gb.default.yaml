@@ -137,3 +137,53 @@ fes-sheet-config:
     header: 0
     rename:
       columns: year
+
+  # Annual H2 demand for industrial sector in GWh between 2021-2050
+  CV.53:
+    usecols: "O:BD"
+    skiprows: 6
+    index_col: 0
+    header: 0
+    rename:
+      index: scenario
+      columns: year
+
+  # Annual H2 demand for commercial sector in GWh between 2021-2050
+  CV.54:
+    usecols: "O:BD"
+    skiprows: 6
+    index_col: 0
+    header: 0
+    rename:
+      index: scenario
+      columns: year
+
+  # Annual H2 demand for home heating in TWh between 2021-2050
+  CV.10:
+    usecols: "M:AR"
+    skiprows: 5
+    index_col: 0
+    header: 0
+    rename:
+      index: scenario
+      columns: year
+
+  # Annual road transport demand in TWh between 2021-2050
+  CV.33:
+    usecols: "M:AW"
+    skiprows: 7
+    index_col: 0
+    header: 0
+    rename:
+      index: scenario
+      columns: year
+
+  # Annual H2 demand in TWh for 2050 only
+  SV.12:
+    usecols: "M:Q"
+    skiprows: 5
+    index_col: 0
+    header: 0
+    rename:
+      index: H2_demand
+      columns: scenario
