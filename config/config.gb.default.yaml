@@ -187,3 +187,12 @@ fes-sheet-config:
     rename:
       index: H2_demand
       columns: scenario
+
+  # Hourly dispatch profile for ASHP and H2 boilers in GWh for 1 day
+  CV.21:
+    usecols: "K:M"
+    skiprows: 4
+    index_col: 0
+    header: 0
+    rename:
+      index: hour
