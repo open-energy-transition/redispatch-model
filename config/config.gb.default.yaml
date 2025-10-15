@@ -175,7 +175,7 @@ fes-sheet-config:
     index_col: 0
     header: 0
     rename:
-      index: scenario
+      index: carrier
       columns: year
 
   # Annual H2 demand in TWh for 2050 only
