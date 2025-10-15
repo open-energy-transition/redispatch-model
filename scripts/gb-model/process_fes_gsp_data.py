@@ -29,7 +29,7 @@ def parse_inputs(
     bb1_path: str,
     bb2_path: str,
     gsp_coordinates_path: str,
-    fes_scenario: list[str],
+    fes_scenario: str,
     year_range: list,
 ) -> pd.DataFrame:
     """
@@ -39,7 +39,7 @@ def parse_inputs(
         bb1_path (str): path of extracted sheet BB1 of the FES workbook
         bb2_path (str): path of extracted sheet BB2 of the FES workbook
         gsp_coordinates_path (str): path of the GSP supply point coordinates file
-        fes_scenario (list[str]): FES scenario(s)
+        fes_scenario (str): FES scenario
     """
 
     df_bb2 = pd.read_csv(bb2_path)
@@ -65,7 +65,7 @@ def parse_inputs(
     df_bb1 = pd.read_csv(bb1_path)
     df_bb1 = df_bb1.apply(_strip_str)
     df_bb1_scenario = df_bb1[
-        (df_bb1["FES Scenario"].isin(fes_scenario))
+        (df_bb1["FES Scenario"] == fes_scenario)
         & (df_bb1["year"].isin(range(year_range[0], year_range[1] + 1)))
     ]
     df_bb1_bb2_scenario = pd.merge(

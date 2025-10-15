@@ -133,7 +133,7 @@ rule process_fes_eur_data:
     message:
         "Process FES-compatible European scenario workbook."
     params:
-        scenario=config["fes"]["scenario"],
+        scenario=config["fes"]["eur"]["scenario"],
         year_range=config["fes"]["year_range_incl"],
         countries=config["countries"],
     input:
@@ -150,7 +150,7 @@ rule process_fes_gsp_data:
     message:
         "Process FES workbook sheet BB1 together with metadata from sheet BB2."
     params:
-        scenario=config["fes"]["scenario"],
+        scenario=config["fes"]["gb"]["scenario"],
         year_range=config["fes"]["year_range_incl"],
     input:
         bb1_sheet=resources("fes/BB1.csv"),
@@ -169,9 +169,9 @@ rule create_powerplants_table:
     message:
         "Tabulate powerplant data GSP-wise from FES workbook sheet BB1 and EU supply data"
     params:
-        carrier_mapping_gb=config["fes"]["carrier_mapping_gb"],
-        carrier_mapping_eur=config["fes"]["carrier_mapping_eur"],
-        set_mapping=config["fes"]["set_mapping"],
+        gb_config=config["fes"]["gb"],
+        eur_config=config["fes"]["eur"],
+        default_set=config["fes"]["default_set"],
     input:
         gsp_data=resources("gb-model/regional_gb_data.csv"),
         eur_data=resources("gb-model/national_eur_data.csv"),

@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 def parse_inputs(
     df: pd.DataFrame,
-    fes_scenario: list[str],
+    fes_scenario: str,
     year_range: list,
     countries: list[str],
 ) -> pd.DataFrame:
@@ -30,10 +30,10 @@ def parse_inputs(
     Parse the input data to the required format.
 
     Args:
-        bb1_path (str): path of extracted sheet BB1 of the FES workbook
-        bb2_path (str): path of extracted sheet BB2 of the FES workbook
-        gsp_coordinates_path (str): path of the GSP supply point coordinates file
-        fes_scenario (list[str]): FES scenario(s)
+        df (pd.DataFrame): FES-compatible European supply data table
+        fes_scenario (str): FES scenario
+        year_range (list): range of years to include
+        countries (list[str]): list of countries to include
     """
     countries_set = set(countries) - {"GB"}
     country_codes = {x: coco.convert(x, to="ISO2") for x in df["Country"].unique()}
@@ -57,7 +57,7 @@ def parse_inputs(
     )
     df_pivoted["year"] = df_pivoted["year"].astype(int)
     df_cleaned = df_pivoted[
-        df_pivoted["FES Scenario Alignment"].isin(fes_scenario)
+        (df_pivoted["FES Scenario Alignment"] == fes_scenario)
         & (df_pivoted["year"].isin(range(year_range[0], year_range[1] + 1)))
     ]
     return df_cleaned
