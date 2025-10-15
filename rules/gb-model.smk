@@ -156,7 +156,7 @@ rule process_fes_gsp_data:
         bb1_sheet=resources("fes/BB1.csv"),
         bb2_sheet=resources("fes/BB2.csv"),
         gsp_coordinates="data/gb-model/downloaded/gsp-coordinates.csv",
-        regions=resources("merged_shapes.geojson"),
+        regions=resources("gb-model/merged_shapes.geojson"),
     output:
         csv=resources("gb-model/regional_gb_data.csv"),
     log:
