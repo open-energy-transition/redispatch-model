@@ -67,7 +67,12 @@ rule retrieve_entsoe_unavailability_data:
     output:
         xml_base_dir=directory("data/gb-model/entsoe_api/{zone}/{business_type}"),
     params:
-        unavailability=config["entsoe_unavailability"],
+        start_date=config["entsoe_unavailability"]["start_date"],
+        end_date=config["entsoe_unavailability"]["end_date"],
+        bidding_zones=config["entsoe_unavailability"]["bidding_zones"],
+        business_types=config["entsoe_unavailability"]["business_types"],
+        max_request_days=config["entsoe_unavailability"]["max_request_days"],
+        api_params=config["entsoe_unavailability"]["api_params"],
     log:
         logs("retrieve_entsoe_unavailability_data_{zone}_{business_type}.log"),
     resources:
@@ -97,6 +102,27 @@ rule process_entsoe_unavailability_data:
         "../envs/gb-model/workflow.yaml"
     script:
         "../scripts/gb-model/process_entsoe_unavailability_data.py"
+
+
+rule gb_generator_monthly_unavailability:
+    input:
+        planned=resources("GB_planned_generator_unavailability.csv"),
+        forced=resources("GB_forced_generator_unavailability.csv"),
+        powerplants=resources("powerplants_s_all.csv"),
+    params:
+        carrier_mapping=config["entsoe_unavailability"]["carrier_mapping"],
+        resource_type_mapping=config["entsoe_unavailability"]["resource_type_mapping"],
+        start_date=config["entsoe_unavailability"]["start_date"],
+        end_date=config["entsoe_unavailability"]["end_date"],
+        max_unavailable_days=config["entsoe_unavailability"]["max_unavailable_days"],
+    output:
+        csv=resources("gb-model/gb_generator_monthly_unavailability.csv"),
+    log:
+        logs("gb_generator_monthly_unavailability.log"),
+    conda:
+        "../envs/gb-model/workflow.yaml"
+    script:
+        "../scripts/gb-model/gb_generator_monthly_unavailability.py"
 
 
 rule extract_transmission_availability:
