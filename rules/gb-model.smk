@@ -183,6 +183,20 @@ rule create_powerplants_table:
         "../scripts/gb-model/create_powerplants_table.py"
 
 
+rule create_interconnectors_table:
+    input:
+        regions=resources("merged_shapes.geojson"),
+    output:
+        gsp_data=resources("gb-model/interconnectors_p_nom.csv"),
+    params:
+        interconnector_config=config["interconnectors"],
+        year_range=config["fes"]["year_range_incl"],
+    log:
+        logs("create_interconnectors_table.log"),
+    script:
+        "../scripts/gb-model/create_interconnectors_table.py"
+
+
 rule compose_network:
     input:
         unpack(input_profile_tech),

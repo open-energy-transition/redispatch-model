@@ -1,0 +1,84 @@
+# SPDX-FileCopyrightText:  gb-open-market-model contributors
+#
+# SPDX-License-Identifier: MIT
+
+
+"""
+Interconnector capacity table generator.
+
+This is a script to set the interconnector capacity per GB region for each scenario year.
+"""
+
+import logging
+from pathlib import Path
+
+import country_converter as coco
+import geopandas as gpd
+import pandas as pd
+
+from scripts._helpers import configure_logging, set_scenario_config
+
+logger = logging.getLogger(__name__)
+
+
+def projects_to_pypsa_links(interconnector_config, gdf_regions):
+    df_cols = ["name", "neighbour", "capacity_mw", "lat", "lon"]
+    df = pd.concat(
+        [
+            pd.DataFrame({k: [v] for k, v in interconnector.items() if k in df_cols})
+            for interconnector in interconnector_config["options"]
+        ]
+    ).set_index("name")
+
+    df["bus0"] = map_gsps_to_regions(df, gdf_regions).values
+    country_codes = {x: coco.convert(x, to="ISO2") for x in df["neighbour"].unique()}
+    df["bus1"] = df["neighbour"].replace(country_codes)
+
+    df_capacity = pd.DataFrame(
+        {
+            year: df.loc[projects].groupby(["bus0", "bus1"]).capacity_mw.sum()
+            for year, projects in interconnector_config["plan"].items()
+        }
+    ).T.rename_axis(index="year")
+    all_years = list(range(df_capacity.index.min(), snakemake.params.year_range[1] + 1))
+    years_to_keep = list(
+        range(snakemake.params.year_range[0], snakemake.params.year_range[1] + 1)
+    )
+
+    df_capacity_all_years = df_capacity.reindex(all_years).cumsum().ffill().fillna(0)
+    df_capacity_all_years = df_capacity_all_years.loc[years_to_keep]
+
+    logger.info(
+        f"Total Interconnector capacity (MW): {df_capacity_all_years.sum(axis=1)}"
+    )
+    df_capacity_all_years = (
+        df_capacity_all_years.unstack()
+        .rename("p_nom")
+        .reset_index()
+        .assign(carrier="DC")
+    )
+    return df_capacity_all_years
+
+
+def map_gsps_to_regions(
+    df: pd.DataFrame, gdf_regions: gpd.GeoDataFrame
+) -> pd.DataFrame:
+    points = gpd.GeoDataFrame(
+        geometry=gpd.points_from_xy(df.lon, df.lat), crs="EPSG:4326"
+    )
+    regions = gpd.sjoin(points, gdf_regions, how="left", predicate="intersects")["name"]
+    return regions
+
+
+if __name__ == "__main__":
+    if "snakemake" not in globals():
+        from scripts._helpers import mock_snakemake
+
+        snakemake = mock_snakemake(Path(__file__).stem)
+    configure_logging(snakemake)
+    set_scenario_config(snakemake)
+
+    interconnector_config = snakemake.params.interconnector_config
+    gdf_regions = gpd.read_file(snakemake.input.regions)
+    df_capacity = projects_to_pypsa_links(interconnector_config, gdf_regions)
+    df_capacity.to_csv(snakemake.output.gsp_data, index=False)
