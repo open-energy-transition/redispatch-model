@@ -16,7 +16,7 @@ import copy
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 import pandas as pd
 import pypsa
@@ -164,10 +164,16 @@ def integrate_renewables(
     if "hydro" not in renewable_carriers:
         return
 
-    non_hydro_carriers = [carrier for carrier in renewable_carriers if carrier != "hydro"]
-    non_hydro_profiles = {k:v for k,v in renewable_profiles.items() if k != "profile_hydro"}
+    non_hydro_carriers = [
+        carrier for carrier in renewable_carriers if carrier != "hydro"
+    ]
+    non_hydro_profiles = {
+        k: v for k, v in renewable_profiles.items() if k != "profile_hydro"
+    }
 
-    extendable_carriers = copy.deepcopy(electricity_config.get("extendable_carriers", {}))
+    extendable_carriers = copy.deepcopy(
+        electricity_config.get("extendable_carriers", {})
+    )
     extendable_carriers.setdefault("Generator", [])
 
     ppl = _load_powerplants(powerplants_path, costs, clustering_config)
@@ -179,7 +185,6 @@ def integrate_renewables(
             if isinstance(settings, dict)
             and settings.get("landfall_length") is not None
         }
-
 
         attach_wind_and_solar(
             network,
@@ -359,7 +364,9 @@ def compose_network(
     """
     network = pypsa.Network(network_path)
     max_hours = electricity_config.get("max_hours")
-    context = create_context(network_path, costs_path, countries, costs_config, max_hours)
+    context = create_context(
+        network_path, costs_path, countries, costs_config, max_hours
+    )
     add_gb_components(network, context)
 
     costs = None
