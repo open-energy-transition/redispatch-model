@@ -196,3 +196,20 @@ fes-sheet-config:
     header: 0
     rename:
       index: hour
+
+  # Annual H2 production in TWh between 2021-2050
+  SV.20:
+    usecols: "M:AW"
+    skiprows: 6
+    index_col: 0
+    header: 0
+    rename:
+      index: carrier
+      columns: year
+
+  # Annual electricity demand in TWh for non-grid connected electrolysis between 2021-2050
+  ED1:
+    usecols: "A:BA"
+    skiprows: 4
+    index_col: 0
+    header: 0
