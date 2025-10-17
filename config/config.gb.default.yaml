@@ -22,13 +22,13 @@ scenario:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 countries:
-  - "BE"
-  - "DK"
-  - "FR"
-  - "GB"
-  - "IE"
-  - "NL"
-  - "NO"
+- "BE"
+- "DK"
+- "FR"
+- "GB"
+- "IE"
+- "NL"
+- "NO"
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
@@ -55,6 +55,8 @@ urls:
   gb-etys-boundaries: https://api.neso.energy/dataset/997f4820-1ad4-499b-b1fe-4b8d3d7fbc72/resource/e914fcec-1dc9-4f1f-97e7-59c0d9521bea/download/etys-boundary-gis-data-mar25.zip
   transmission-availability: https://www.neso.energy/document/211021/download
   fes-workbook: https://www.neso.energy/document/199971/download # FES 2021 workbook
+  gsp-coordinates: https://api.neso.energy/dataset/963525d6-5d83-4448-a99c-663f1c76330a/resource/41fb4ca1-7b59-4fce-b480-b46682f346c9/download/fes2021_regional_breakdown_gsp_info.csv
+  eur-supply-table: https://api.neso.energy/dataset/bd83ce0b-7b1e-4ff2-89e8-12d524c34d99/resource/6563801b-6da4-46e7-b147-3d81c0237779/download/fes2023_es2_v001.csv
 target_crs: "EPSG:27700"
 area_loss_tolerance_percent: 0.01 # percentage of area loss tolerated when splitting regions
 min_region_area: 1000000 # minimum area of a region in square meters (1 km²) for keeping it after splitting
@@ -213,3 +215,100 @@ fes-sheet-config:
     skiprows: 4
     index_col: 0
     header: 0
+
+  BB2:
+    usecols: "A:E"
+    skiprows: 2
+    index_col: [0, 1, 3]
+    header: 0
+    rename:
+      columns: Parameter
+
+fes:
+  year_range_incl: [2022, 2041] # 20-year period over which we will run the simulation
+  default_set: PP
+  gb:
+    scenario: Leading The Way   # fes workbook
+    carrier_mapping:
+      # Mapping undertaken in different columns for different carriers
+      Technology:
+        Biomass & Energy Crops (including CHP): biomass
+        CCGTs (non CHP): CCGT
+        Coal: coal
+        Geothermal: geothermal
+        Hydro: ror # FIXME: should this be just "hydro?"
+        Hydrogen fuelled generation: hydrogen  # FIXME: something else here?
+        Marine: marine
+        Non-renewable Engines (Diesel) (non CHP): oil
+        Non-renewable Engines (Gas) (non CHP): gas
+        Nuclear: nuclear
+        OCGTs (non CHP): OCGT
+        Offshore-Wind (off-Grid): offwind
+        Renewable Engines (Landfill Gas, Sewage Gas, Biogas): biomass
+        Solar Generation: solar
+        Waste Incineration (including CHP): waste
+      Technology Detail:
+        Batteries: battery
+        Pumped Hydro: PHS # FIXME: should this be just "hydro?"
+        Offshore Wind: offwind
+        Onshore Wind <1MW: onwind
+        Onshore Wind >=1MW: onwind
+
+    set_mapping:
+      Technology:
+        Biomass & Energy Crops (including CHP): CHP
+        Waste Incineration (including CHP): CHP
+        Non-renewable CHP: CHP
+        Storage: Store
+  eur:
+    scenario: CT & LW    # "Leading the Way" equivalent in the NESO european supply table
+    carrier_mapping:
+      # Mapping undertaken in different columns for different carriers
+      Type:
+        Biomass: biomass
+        Marine: marine
+        Nuclear: nuclear
+        Offshore Wind: offwind
+        Onshore Wind: onwind
+        Waste: waste
+      SubType:
+        CCS Biomass: biomass
+        CCS Gas: gas
+        CCGT: OCGT
+        Gas CHP: CCGT
+        OCGT: OCGT
+        Gas Reciprocating Engines: gas
+        Hydrogen: hydrogen # hydrogen-fueled turbine
+        Fuel Oil: oil
+        Battery: battery
+        Pumped Hydro: PHS
+      SubSubType:
+        Coal: coal
+        Coal CHP: coal
+        IGCC: coal
+        Lignite: lignite
+        Lignite CHP: lignite
+        Peat CHP: lignite
+        Hydro: hydro
+        Reservoir Hydro: hydro
+        Reservoir Hydro with pumping: hydro
+        Run-of-river Hydro: ror
+        Small-Scale-Hydro: ror
+        Geothermal: geothermal
+        Solar PV: solar
+        Solar CSP: csp
+
+      ## unmapped
+      # Other Renewables
+
+    set_mapping:
+      SubType:
+        Biomass CHP: CHP
+        Gas CHP: CHP
+        Battery: Store
+        Pumped Hydro: Store
+      SubSubType:
+        Coal CHP: CHP
+        Lignite CHP: CHP
+        Peat CHP: CHP
+        Reservoir Hydro with pumping: Store
