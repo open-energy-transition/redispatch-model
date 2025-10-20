@@ -226,6 +226,15 @@ fes-sheet-config:
       rename:
         columns: Parameter
 
+  2023:
+    WS1:
+      usecols: "A:D,H:AM" # Ignore columns: "Baseline (2022)", "Share of GSP" (empty), "DNO License Area"
+      skiprows: 7
+      index_col: [0, 1, 2, 3, 4]
+      header: 0
+      rename:
+        columns: year
+
 fes:
   year_range_incl: [2022, 2041] # 20-year period over which we will run the simulation
   default_set: PP
@@ -323,11 +332,15 @@ fes:
   hydrogen:
     demand:
       annual_demand_sheets:
-        industrial: CV.53
-        commercial: CV.54
-        residential: CV.10
-        transport: CV.33
-        other: SV.12
-      residential_demand_profile:
-        enable: false
-        sheet: CV.21
+        2021:
+          industrial: CV.53
+          commercial: CV.54
+          residential: CV.10
+          road transport: CV.33  # annual demand for Leading the Way scenario only
+        2023:
+          other: WS1
+      other_sectors_list:
+        - shipping and aviation
+        - blending
+        - direct air carbon capture and storage
+        - transmission losses
