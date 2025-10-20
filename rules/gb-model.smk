@@ -114,17 +114,17 @@ rule extract_transmission_availability:
 
 rule extract_fes_workbook_sheet:
     message:
-        "Extract FES workbook sheet {wildcards.fes_sheet} and process into machine-readable, 'tidy' dataframe format according to defined configuration."
+        "Extract FES workbook sheet {wildcards.fes_sheet} for FES-{wildcards.fes_year} and process into machine-readable, 'tidy' dataframe format according to defined configuration."
     input:
-        workbook="data/gb-model/downloaded/fes-workbook.xlsx",
+        workbook="data/gb-model/downloaded/fes-{fes_year}-workbook.xlsx",
     output:
-        csv=resources("gb-model/fes/{fes_sheet}.csv"),
+        csv=resources("gb-model/fes/{fes_year}/{fes_sheet}.csv"),
     params:
         sheet_extract_config=lambda wildcards: config["fes-sheet-config"][
-            wildcards.fes_sheet
-        ],
+            int(wildcards.fes_year)
+        ][wildcards.fes_sheet],
     log:
-        logs("extract_fes_{fes_sheet}.log"),
+        logs("extract_fes-{fes_year}_{fes_sheet}.log"),
     script:
         "../scripts/gb-model/extract_fes_sheet.py"
 
@@ -181,6 +181,29 @@ rule create_powerplants_table:
         logs("create_powerplants_table.log"),
     script:
         "../scripts/gb-model/create_powerplants_table.py"
+
+
+#rule process_hydrogen_data:
+#    message:
+#        "Process hydrogen data from FES workbook"
+#    params:
+#        scenario=config["fes"]["gb"]["scenario"],
+#        year_range=config["fes"]["year_range_incl"],
+#        fes_demand_sheets=config["fes"]["hydrogen"]["demand"]["annual_demand_sheets"],
+#    input:
+#        bb1_sheet=resources("gb-model/fes/BB1.csv"),
+#        demand_sheets=expand(
+#            resources("gb-model/fes/{sheet}.csv"),
+#            sheet=config["fes"]["hydrogen"]["demand"]["annual_demand_sheets"].values()
+#        ),
+#        residential_demand_profile_sheet=resources("gb-model/fes/SV.12.csv"),
+#        2050_demand_sheet=resources("gb-model/fes/SV.12.csv"),
+#    output:
+#        hydrogen_demand=resources("gb-model/fes_hydrogen_demand_data.csv"),
+#    log:
+#        logs("process_fes_hydrogen_data.log"),
+#    script:
+#        "../scripts/gb-model/process_fes_hydrogen_data.py"
 
 
 rule compose_network:

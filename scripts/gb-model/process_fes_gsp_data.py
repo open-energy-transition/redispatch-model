@@ -65,7 +65,7 @@ def parse_inputs(
     df_bb1 = pd.read_csv(bb1_path)
     df_bb1 = df_bb1.apply(_strip_str)
     df_bb1_scenario = df_bb1[
-        (df_bb1["FES Scenario"] == fes_scenario)
+        (df_bb1["FES Scenario"].str.lower() == fes_scenario)
         & (df_bb1["year"].isin(range(year_range[0], year_range[1] + 1)))
     ]
     df_bb1_bb2_scenario = pd.merge(
