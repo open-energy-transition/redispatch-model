@@ -183,27 +183,27 @@ rule create_powerplants_table:
         "../scripts/gb-model/create_powerplants_table.py"
 
 
-#rule process_hydrogen_data:
-#    message:
-#        "Process hydrogen data from FES workbook"
-#    params:
-#        scenario=config["fes"]["gb"]["scenario"],
-#        year_range=config["fes"]["year_range_incl"],
-#        fes_demand_sheets=config["fes"]["hydrogen"]["demand"]["annual_demand_sheets"],
-#    input:
-#        bb1_sheet=resources("gb-model/fes/BB1.csv"),
-#        demand_sheets=expand(
-#            resources("gb-model/fes/{sheet}.csv"),
-#            sheet=config["fes"]["hydrogen"]["demand"]["annual_demand_sheets"].values()
-#        ),
-#        residential_demand_profile_sheet=resources("gb-model/fes/SV.12.csv"),
-#        2050_demand_sheet=resources("gb-model/fes/SV.12.csv"),
-#    output:
-#        hydrogen_demand=resources("gb-model/fes_hydrogen_demand_data.csv"),
-#    log:
-#        logs("process_fes_hydrogen_data.log"),
-#    script:
-#        "../scripts/gb-model/process_fes_hydrogen_data.py"
+rule process_hydrogen_data:
+    message:
+        "Process hydrogen data from FES workbook"
+    params:
+        scenario=config["fes"]["gb"]["scenario"],
+        year_range=config["fes"]["year_range_incl"],
+        fes_demand_sheets=config["fes"]["hydrogen"]["demand"]["annual_demand_sheets"],
+    input:
+        bb1_sheet=resources("gb-model/fes/BB1.csv"),
+        demand_sheets=expand(
+            resources("gb-model/fes/{sheet}.csv"),
+            sheet=config["fes"]["hydrogen"]["demand"]["annual_demand_sheets"].values()
+        ),
+        residential_demand_profile_sheet=resources("gb-model/fes/SV.12.csv"),
+        2050_demand_sheet=resources("gb-model/fes/SV.12.csv"),
+    output:
+        hydrogen_demand=resources("gb-model/fes_hydrogen_demand_data.csv"),
+    log:
+        logs("process_fes_hydrogen_data.log"),
+    script:
+        "../scripts/gb-model/process_fes_hydrogen_data.py"
 
 
 rule compose_network:
