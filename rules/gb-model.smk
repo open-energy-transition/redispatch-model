@@ -234,33 +234,3 @@ rule compose_networks:
             **config["scenario"],
             run=config["run"]["name"],
         ),
-
-
-rule extract_transmission_availability:
-    input:
-        pdf_report="data/gb-model/downloaded/transmission-availability.pdf",
-    output:
-        csv=resources("transmission_availability.csv"),
-    log:
-        logs("extract_transmission_availability.log"),
-    conda:
-        "../envs/gb-model/workflow.yaml"
-    script:
-        "../scripts/gb-model/extract_transmission_availability.py"
-
-
-rule extract_fes_workbook_sheet:
-    message:
-        "Extract FES workbook sheet {wildcards.fes_sheet} and process into machine-readable, 'tidy' dataframe format according to defined configuration."
-    input:
-        workbook="data/gb-model/downloaded/fes-workbook.xlsx",
-    output:
-        csv=resources("fes/{fes_sheet}.csv"),
-    params:
-        sheet_extract_config=lambda wildcards: config["fes-sheet-config"][
-            wildcards.fes_sheet
-        ],
-    log:
-        logs("extract_fes_{fes_sheet}.log"),
-    script:
-        "../scripts/gb-model/extract_fes_sheet.py"
