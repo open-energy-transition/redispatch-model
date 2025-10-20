@@ -14,9 +14,7 @@ from pathlib import Path
 import pandas as pd
 
 import sys
-script_dir = Path(__file__).parent
-gb_model_dir = script_dir
-sys.path.insert(0, str(gb_model_dir))
+sys.path.insert(0, str(Path(__file__).parent))
 from scripts._helpers import configure_logging, set_scenario_config
 from _helpers import _strip_str
 

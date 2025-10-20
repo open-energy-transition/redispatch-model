@@ -15,14 +15,12 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 
+import sys
+sys.path.insert(0, str(Path(__file__).parent))
 from scripts._helpers import configure_logging, set_scenario_config
+from _helpers import _strip_str
 
 logger = logging.getLogger(__name__)
-
-
-def _strip_str(series: pd.Series) -> pd.Series:
-    """Strip whitespace from strings in a pandas Series."""
-    return series.str.strip() if series.dtype == "object" else series
 
 
 def parse_inputs(
