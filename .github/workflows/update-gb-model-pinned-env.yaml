@@ -49,6 +49,9 @@ jobs:
         path: envs/**/*.pin.txt
 
   create-pull-request:
+    permissions:
+      contents: write
+      pull-requests: write
     needs: update-locked-environment
     runs-on: ubuntu-latest
     steps:
@@ -64,12 +67,12 @@ jobs:
       uses: peter-evans/create-pull-request@v7
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        branch: update-locked-environment
-        title: "[github-actions.ci] Update locked envs"
+        branch: update-pinned-environment
+        title: "[github-actions.ci] Update pinned envs"
         body: |
-          Automatically generated PR to update locked environment files for Windows, macOS, and Linux.
+          Automatically generated PR to update pinned environment files for Windows, macOS, and Linux.
 
           These files were generated using snakedeploy for improved dependency resolution and reproducibility.
 
           **Note: Do not merge without manual test execution. Either update the branch to trigger tests, or use `workflow_dispatch` to run tests manually. Unlike standard PRs, tests will not run automatically.**
-        commit-message: "Update locked environment files for all platforms"
+        commit-message: "Update pinned environment files for all platforms"
