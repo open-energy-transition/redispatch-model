@@ -12,7 +12,8 @@ Release Notes
 Upcoming Release
 ================
 
-* Tabulated GSP wise powerplant capacities for GB (#4).
+* Tabulated interconnector capacities between GB regions and neighbouring countries (#10).
+* Tabulated regional powerplant capacities for GB (#4).
 * Tabulated EU country level aggregated powerplant capacities (#33)
 * Add rule 'retrieve_unavailability_data' to Snakemake workflow for fetching unavailability data from ENTSO-E. (#43)
 * Increase number of HTTP download retries to mitigate against Zenodo file retrieval timeouts.
