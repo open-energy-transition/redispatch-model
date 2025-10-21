@@ -209,6 +209,7 @@ rule process_fes_hydrogen_data:
         hydrogen_demand=resources("gb-model/fes_hydrogen_demand_data.csv"),
         grid_electrolysis_capacities=resources("gb-model/fes_grid_electrolysis_capacities.csv"),
         hydrogen_supply=resources("gb-model/fes_hydrogen_supply_data.csv"),
+        electricity_demand=resources("gb-model/fes_off_grid_electrolysis_electricity_demand.csv"),
     log:
         logs("process_fes_hydrogen_data.log"),
     script:

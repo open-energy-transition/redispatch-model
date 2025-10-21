@@ -213,10 +213,12 @@ fes-sheet-config:
 
     # Annual electricity demand in TWh for non-grid connected electrolysis between 2021-2050
     ED1:
-      usecols: "A:BA"
+      usecols: "B:E,G:BA"
       skiprows: 4
-      index_col: 0
+      index_col: [0, 1, 2, 3]
       header: 0
+      rename:
+        columns: year
 
     BB2:
       usecols: "A:E"
