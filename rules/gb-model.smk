@@ -33,6 +33,11 @@ rule create_region_shapes:
         etys_boundary_lines="data/gb-model/downloaded/gb-etys-boundaries.zip",
     output:
         raw_region_shapes=resources("gb-model/raw_region_shapes.geojson"),
+    params:
+        area_loss_tolerance_percent=config["region_operations"][
+            "area_loss_tolerance_percent"
+        ],
+        min_region_area=config["region_operations"]["min_region_area"],
     log:
         logs("raw_region_shapes.log"),
     resources:
