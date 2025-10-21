@@ -67,7 +67,12 @@ rule retrieve_entsoe_unavailability_data:
     output:
         xml_base_dir=directory("data/gb-model/entsoe_api/{zone}/{business_type}"),
     params:
-        unavailability=config["entsoe_unavailability"],
+        start_date=config["entsoe_unavailability"]["start_date"],
+        end_date=config["entsoe_unavailability"]["end_date"],
+        bidding_zones=config["entsoe_unavailability"]["bidding_zones"],
+        business_types=config["entsoe_unavailability"]["business_types"],
+        max_request_days=config["entsoe_unavailability"]["max_request_days"],
+        api_params=config["entsoe_unavailability"]["api_params"],
     log:
         logs("retrieve_entsoe_unavailability_data_{zone}_{business_type}.log"),
     resources:
@@ -97,6 +102,27 @@ rule process_entsoe_unavailability_data:
         "../envs/gb-model/workflow.yaml"
     script:
         "../scripts/gb_model/process_entsoe_unavailability_data.py"
+
+
+rule generator_monthly_unavailability:
+    input:
+        planned=resources("gb-model/{zone}_planned_generator_unavailability.csv"),
+        forced=resources("gb-model/{zone}_forced_generator_unavailability.csv"),
+        powerplants=resources("powerplants_s_all.csv"),
+    params:
+        carrier_mapping=config["entsoe_unavailability"]["carrier_mapping"],
+        resource_type_mapping=config["entsoe_unavailability"]["resource_type_mapping"],
+        start_date=config["entsoe_unavailability"]["start_date"],
+        end_date=config["entsoe_unavailability"]["end_date"],
+        max_unavailable_days=config["entsoe_unavailability"]["max_unavailable_days"],
+    output:
+        csv=resources("gb-model/{zone}_generator_monthly_unavailability.csv"),
+    log:
+        logs("{zone}_generator_monthly_unavailability.log"),
+    conda:
+        "../envs/gb-model/workflow.yaml"
+    script:
+        "../scripts/gb-model/generator_monthly_unavailability.py"
 
 
 rule extract_transmission_availability:
@@ -222,6 +248,7 @@ rule compose_network:
             resources("gb-model/merged_shapes.geojson"),
             resources("gb-model/fes_p_nom.csv"),
             resources("gb-model/interconnectors_p_nom.csv"),
+            resources("gb-model/GB_generator_monthly_unavailability.csv"),
         ],
     output:
         network=resources("networks/composed_{clusters}.nc"),

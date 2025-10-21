@@ -267,18 +267,17 @@ if __name__ == "__main__":
         )
 
     # Get date parameters from config or use defaults
-    unavailability_config = snakemake.params.unavailability
-    start_date = pd.to_datetime(unavailability_config["start_date"])
-    end_date = pd.to_datetime(unavailability_config["end_date"])
-    max_request_days = unavailability_config["max_request_days"]
+    start_date = pd.to_datetime(snakemake.params.start_date)
+    end_date = pd.to_datetime(snakemake.params.end_date)
+    max_request_days = snakemake.params.max_request_days
 
     # Split the date range into weekly periods
     periods = generate_weekly_periods(start_date, end_date, max_days=max_request_days)
 
     # Get mapping dictionaries from config
-    uk_bidding_zones = unavailability_config["api_params"]["bidding_zones"]
-    business_types_map = unavailability_config["api_params"]["business_types"]
-    doc_status_map = unavailability_config["api_params"]["doc_status"]
+    uk_bidding_zones = snakemake.params.api_params["bidding_zones"]
+    business_types_map = snakemake.params.api_params["business_types"]
+    doc_status_map = snakemake.params.api_params["doc_status"]
 
     # Initialize API client
     api_client = ENTSOEUnavailabilityAPI(api_key)

@@ -51,6 +51,10 @@ solving:
     name: gurobi
     options: gurobi-default
 
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#electricity
+electricity:
+  powerplants_filter: (DateOut >= 2020 or DateOut != DateOut) and not (Country == 'Germany' and Fueltype == 'Nuclear')
+
 urls:
   gb-etys-boundaries: https://api.neso.energy/dataset/997f4820-1ad4-499b-b1fe-4b8d3d7fbc72/resource/e914fcec-1dc9-4f1f-97e7-59c0d9521bea/download/etys-boundary-gis-data-mar25.zip
   transmission-availability: https://www.neso.energy/document/211021/download
@@ -103,11 +107,12 @@ region_operations:
 # Note: Set ENTSO_E_API_KEY in your .env file or environment variables
 # Register at https://transparency.entsoe.eu/ to get API key
 entsoe_unavailability:
-  start_date: "2023-01-01"
-  end_date: "2024-01-01"
+  start_date: "2022-01-01"
+  end_date: "2024-12-31"
   bidding_zones: ["GB"]  # Great Britain only
   business_types: ["planned", "forced"]  # planned maintenance and forced outages
-  max_request_days: 7  # Maximum days per API request to avoid timeouts
+  max_request_days: 120  # Maximum days per API request to avoid timeouts
+  max_unavailable_days: 365 # Maximum days to consider an outage in availability profile generation.
   api_params:
     # UK bidding zone codes
     bidding_zones:
@@ -121,6 +126,49 @@ entsoe_unavailability:
       active: "A05"     # Active
       cancelled: "A09"  # Cancelled
       withdrawn: "A13"  # Withdrawn
+
+  carrier_mapping: # Null values are those for which we don't plan to map data
+    Bioenergy: biomass
+    Lignite: lignite
+    Natural Gas: gas
+    Hard Coal: coal
+    Oil: oil
+    Geothermal: geothermal
+    Pumped Hydro: PHS
+    Run-Of-River: ror
+    Reservoir: hydro
+    Nuclear: nuclear
+    Waste: waste
+
+  resource_type_mapping:
+    Fueltype:
+      B01: Bioenergy  # Biomass
+      B02: Lignite # "Fossil Brown coal/Lignite"
+      B03: Hard Coal # "Fossil Coal-derived gas"
+      B04: Natural Gas  # "Fossil Gas"
+      B05: Hard Coal # "Fossil Hard coal"
+      B06: Oil # "Fossil Oil"
+      B07: Oil # "Fossil Oil shale"
+      B09: Geothermal  # "Geothermal"
+      B14: Nuclear  # "Nuclear"
+      B17: Waste  # "Waste"
+    Technology:
+      B10: Pumped Storage # "Hydro Pumped Storage"
+      B11: Run-Of-River # "Hydro Run-of-river and poundage"
+      B12: Reservoir  # "Hydro Water Reservoir"
+
+    ## unmapped
+    # B08: "Fossil Peat"
+    # B13: "Marine"
+    # B15: "Other renewable"
+    # B16: "Solar"
+    # B18: "Wind Offshore"
+    # B19: "Wind Onshore"
+    # B20: "Other"
+    # B21: "AC Link"
+    # B22: "DC Link"
+    # B23: "Substation"
+    # B24: "Transformer"
 
 fes-sheet-config:
   SV.34:

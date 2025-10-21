@@ -25,7 +25,6 @@ Tables from the workbook we use are:
 - BB2: Building Block Metadata
 - SV.34: Installed BECCS generation capacity (GW)
 
-
 -----------------
 GSP coordinates
 -----------------
@@ -48,3 +47,13 @@ Project definitions and our manually defined start dates for them are user-confi
 .. note::
   No reasonable combination of projects perfectly matches the FES results.
   However, the combination culminating in the FES results is not publicly available, so the projects we choose is an opinionated assumption.
+
+------------------------------
+Generator availability profile
+------------------------------
+We define a monthly availability profile for GB generator types for which we have historical data on outages.
+We access historical outage data from the `ENSTO-E transparency platform <https://transparency.entsoe.eu/outage-domain/r2/unavailabilityOfProductionAndGenerationUnits/show>`_, spanning a configurable number of years.
+We group these outages into PyPSA-Eur generator types ("carriers") and use this to calculate the daily relative availability of each type, by comparing the lost capacity due to forced/planned outages against the total national capacity of that type.
+We derive total capacity from the base PyPSA-Eur powerplant dataset.
+We finally collapse this multi-year, daily availability profile into a single monthly profile by calculating a monthly grouped average availability.
+For instance, if there is a 80% availability in the first half of June for only one of the five assessed historical years, the final June availability will be 98%.
