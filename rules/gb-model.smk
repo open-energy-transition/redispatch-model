@@ -104,10 +104,10 @@ rule process_entsoe_unavailability_data:
         "../scripts/gb-model/process_entsoe_unavailability_data.py"
 
 
-rule gb_generator_monthly_unavailability:
+rule generator_monthly_unavailability:
     input:
-        planned=resources("GB_planned_generator_unavailability.csv"),
-        forced=resources("GB_forced_generator_unavailability.csv"),
+        planned=resources("gb-model/{zone}_planned_generator_unavailability.csv"),
+        forced=resources("gb-model/{zone}_forced_generator_unavailability.csv"),
         powerplants=resources("powerplants_s_all.csv"),
     params:
         carrier_mapping=config["entsoe_unavailability"]["carrier_mapping"],
@@ -116,9 +116,9 @@ rule gb_generator_monthly_unavailability:
         end_date=config["entsoe_unavailability"]["end_date"],
         max_unavailable_days=config["entsoe_unavailability"]["max_unavailable_days"],
     output:
-        csv=resources("gb-model/generator_monthly_unavailability.csv"),
+        csv=resources("gb-model/{zone}_generator_monthly_unavailability.csv"),
     log:
-        logs("gb_generator_monthly_unavailability.log"),
+        logs("{zone}_generator_monthly_unavailability.log"),
     conda:
         "../envs/gb-model/workflow.yaml"
     script:
@@ -233,7 +233,7 @@ rule compose_network:
             ),
             resources("gb-model/merged_shapes.geojson"),
             resources("gb-model/fes_p_nom.csv"),
-            resources("gb-model/generator_monthly_unavailability.csv"),
+            resources("gb-model/GB_generator_monthly_unavailability.csv"),
         ],
     output:
         network=resources("networks/composed_{clusters}.nc"),

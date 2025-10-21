@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: MIT
 
 """
-GB generator monthly unavailability.
+Monthly asset unavailability profile generator.
 
-This is a script to calculate monthly unavailability for generators for which we have outage data in Great Britain.
+This is a script to calculate monthly unavailability for generation assets for which we have outage data in Great Britain.
 We do not attempt to calculate unavailability curves regionally as regional data on maximum capacities per carrier are not robust enough.
 """
 
