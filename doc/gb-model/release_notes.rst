@@ -13,6 +13,7 @@ Upcoming Release
 ================
 
 * Tabulated monthly GB powerplant fractional availability profiles (#71).
+* Remove unnecessary output in `compose_networks` rule that causes error (#2)
 * Tabulated GSP wise powerplant capacities for GB (#4).
 * Tabulated EU country level aggregated powerplant capacities (#33)
 * Add rule 'retrieve_unavailability_data' to Snakemake workflow for fetching unavailability data from ENTSO-E. (#43)
