@@ -116,13 +116,13 @@ rule gb_generator_monthly_unavailability:
         end_date=config["entsoe_unavailability"]["end_date"],
         max_unavailable_days=config["entsoe_unavailability"]["max_unavailable_days"],
     output:
-        csv=resources("gb-model/gb_generator_monthly_unavailability.csv"),
+        csv=resources("gb-model/generator_monthly_unavailability.csv"),
     log:
         logs("gb_generator_monthly_unavailability.log"),
     conda:
         "../envs/gb-model/workflow.yaml"
     script:
-        "../scripts/gb-model/gb_generator_monthly_unavailability.py"
+        "../scripts/gb-model/generator_monthly_unavailability.py"
 
 
 rule extract_transmission_availability:
@@ -233,6 +233,7 @@ rule compose_network:
             ),
             resources("gb-model/merged_shapes.geojson"),
             resources("gb-model/fes_p_nom.csv"),
+            resources("gb-model/generator_monthly_unavailability.csv"),
         ],
     output:
         network=resources("networks/composed_{clusters}.nc"),
