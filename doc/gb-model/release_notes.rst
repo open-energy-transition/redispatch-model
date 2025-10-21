@@ -12,6 +12,7 @@ Release Notes
 Upcoming Release
 ================
 
+* Tabulated monthly GB powerplant fractional availability profiles (#71).
 * Remove unnecessary output in `compose_networks` rule that causes error (#2)
 * Tabulated GSP wise powerplant capacities for GB (#4).
 * Tabulated EU country level aggregated powerplant capacities (#33)
