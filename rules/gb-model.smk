@@ -191,15 +191,24 @@ rule process_fes_hydrogen_data:
         year_range=config["fes"]["year_range_incl"],
         fes_demand_sheets=config["fes"]["hydrogen"]["demand"]["annual_demand_sheets"],
         other_sectors_list=config["fes"]["hydrogen"]["demand"]["other_sectors_list"],
+        fes_supply_sheets=config["fes"]["hydrogen"]["supply"]["supply_sheets"],
+        exogeneous_supply_list=config["fes"]["hydrogen"]["supply"]["exogeneous_supply_list"],
     input:
-        bb1_sheet=resources("gb-model/fes/BB1.csv"),
+        regional_gb_data=resources("gb-model/regional_gb_data.csv"),
         demand_sheets=lambda wildcards: [
             resources(f"gb-model/fes/{year}/{sheet}.csv")
             for year, sheets in config["fes"]["hydrogen"]["demand"]["annual_demand_sheets"].items()
             for sheet in sheets.values()
-        ]
+        ],
+        supply_sheets=lambda wildcards: [
+            resources(f"gb-model/fes/{year}/{sheet}.csv")
+            for year, sheets in config["fes"]["hydrogen"]["supply"]["supply_sheets"].items()
+            for sheet in sheets.values()
+        ],
     output:
         hydrogen_demand=resources("gb-model/fes_hydrogen_demand_data.csv"),
+        grid_electrolysis_capacities=resources("gb-model/fes_grid_electrolysis_capacities.csv"),
+        hydrogen_supply=resources("gb-model/fes_hydrogen_supply_data.csv"),
     log:
         logs("process_fes_hydrogen_data.log"),
     script:

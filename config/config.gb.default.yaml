@@ -204,7 +204,7 @@ fes-sheet-config:
     # Annual H2 production in TWh between 2021-2050
     SV.20:
       usecols: "M:AW"
-      skiprows: 6
+      skiprows: 5
       index_col: 0
       header: 0
       rename:
@@ -344,3 +344,12 @@ fes:
         - blending
         - direct air carbon capture and storage
         - transmission losses
+    supply:
+      supply_sheets:
+        2021:
+          hydrogen_supply: SV.20
+          electricity_demand: ED1
+      exogeneous_supply_list:
+        - non-networked electrolysis
+        - beccs
+        - imports
