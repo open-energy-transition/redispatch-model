@@ -122,7 +122,7 @@ rule generator_monthly_unavailability:
     conda:
         "../envs/gb-model/workflow.yaml"
     script:
-        "../scripts/gb-model/generator_monthly_unavailability.py"
+        "../scripts/gb_model/generator_monthly_unavailability.py"
 
 
 rule extract_transmission_availability:
@@ -211,7 +211,7 @@ rule create_powerplants_table:
 
 rule create_interconnectors_table:
     input:
-        regions=resources("merged_shapes.geojson"),
+        regions=resources("gb-model/merged_shapes.geojson"),
     output:
         gsp_data=resources("gb-model/interconnectors_p_nom.csv"),
     params:
