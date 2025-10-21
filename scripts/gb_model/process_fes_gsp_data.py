@@ -16,6 +16,7 @@ import geopandas as gpd
 import pandas as pd
 
 from scripts._helpers import configure_logging, set_scenario_config
+from scripts.gb_model._helpers import map_points_to_regions
 
 logger = logging.getLogger(__name__)
 
@@ -123,19 +124,6 @@ def parse_inputs(
     return df_final
 
 
-def map_gsps_to_regions(
-    df: pd.DataFrame, gdf_regions: gpd.GeoDataFrame
-) -> pd.DataFrame:
-    points = gpd.GeoDataFrame(
-        geometry=gpd.points_from_xy(df.Longitude, df.Latitude),
-        crs="EPSG:4326",
-    )
-    df["bus"] = gpd.sjoin(points, gdf_regions, how="left", predicate="intersects")[
-        "name"
-    ]
-    return df
-
-
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from scripts._helpers import mock_snakemake
@@ -157,7 +145,7 @@ if __name__ == "__main__":
     df = parse_inputs(
         bb1_path, bb2_path, gsp_coordinates_path, fes_scenario, year_range
     )
-    df_with_regions = map_gsps_to_regions(df, gdf_regions)
+    df["bus"] = map_points_to_regions(df, gdf_regions, "Latitude", "Longitude")
     logger.info(f"Extracted the {fes_scenario} relevant data")
 
     df.to_csv(snakemake.output.csv, index=False)

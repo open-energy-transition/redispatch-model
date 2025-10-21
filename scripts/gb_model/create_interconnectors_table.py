@@ -17,6 +17,7 @@ import geopandas as gpd
 import pandas as pd
 
 from scripts._helpers import configure_logging, set_scenario_config
+from scripts.gb_model._helpers import map_points_to_regions
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ def projects_to_pypsa_links(interconnector_config, gdf_regions):
         ]
     ).set_index("name")
 
-    df["bus0"] = map_gsps_to_regions(df, gdf_regions).values
+    df["bus0"] = map_points_to_regions(df, gdf_regions, "lat", "lon").values
     country_codes = {x: coco.convert(x, to="ISO2") for x in df["neighbour"].unique()}
     df["bus1"] = df["neighbour"].replace(country_codes)
 
@@ -58,16 +59,6 @@ def projects_to_pypsa_links(interconnector_config, gdf_regions):
         .assign(carrier="DC")
     )
     return df_capacity_all_years
-
-
-def map_gsps_to_regions(
-    df: pd.DataFrame, gdf_regions: gpd.GeoDataFrame
-) -> pd.DataFrame:
-    points = gpd.GeoDataFrame(
-        geometry=gpd.points_from_xy(df.lon, df.lat), crs="EPSG:4326"
-    )
-    regions = gpd.sjoin(points, gdf_regions, how="left", predicate="intersects")["name"]
-    return regions
 
 
 if __name__ == "__main__":
