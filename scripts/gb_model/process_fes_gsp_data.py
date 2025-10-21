@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 
 from scripts._helpers import configure_logging, set_scenario_config
+from scripts.gb_model._helpers import map_points_to_regions
 
 logger = logging.getLogger(__name__)
 
@@ -134,22 +135,6 @@ def parse_inputs(
     return df_final
 
 
-def map_gsps_to_regions(
-    df: pd.DataFrame,
-    gdf_regions: gpd.GeoDataFrame,
-    region_cols: list[str] = ["name", "TO_region"],
-) -> pd.DataFrame:
-    points = gpd.GeoDataFrame(
-        geometry=gpd.points_from_xy(df.Longitude, df.Latitude),
-        crs="EPSG:4326",
-        index=df.index,
-    )
-    regions = gpd.sjoin(points, gdf_regions, how="left", predicate="intersects")[
-        region_cols
-    ]
-    return regions
-
-
 def distribute_direct_gsp_data(df: pd.DataFrame) -> pd.DataFrame:
     """
     Distribute data from Direct(<TO_region>) rows to the GSPs in the same TO region.
@@ -263,7 +248,9 @@ if __name__ == "__main__":
         bb1_path, bb2_path, gsp_coordinates_path, fes_scenario, year_range
     )
 
-    region_data = map_gsps_to_regions(df, gdf_regions)
+    region_data = map_points_to_regions(df, gdf_regions, "Latitude", "Longitude")[
+        ["name", "TO_region"]
+    ]
     df_with_regions = pd.concat(
         [df, region_data.rename(columns={"name": "bus"})], axis=1
     )
