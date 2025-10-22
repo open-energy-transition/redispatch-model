@@ -21,8 +21,8 @@ from scripts.gb_model._helpers import _strip_str
 logger = logging.getLogger(__name__)
 
 
-def _standartize_year(series: pd.Series) -> pd.Series:
-    """Standartize year format in a pandas Series."""
+def _standardize_year(series: pd.Series) -> pd.Series:
+    """Standardize year format in a pandas Series."""
     if series.dtype == "object" and "-" in str(series.iloc[0]):
         series = pd.to_datetime(series).dt.year
     return series.astype(int) if series.dtype == "object" else series
@@ -68,8 +68,8 @@ def parse_demand_inputs(
             # Make all column names lowercase
             demand_data[sector].columns = demand_data[sector].columns.str.lower()
 
-            # Standartize year format
-            demand_data[sector]["year"] = _standartize_year(demand_data[sector]["year"])
+            # Standardize year format
+            demand_data[sector]["year"] = _standardize_year(demand_data[sector]["year"])
 
             # Make data column numeric
             demand_data[sector]["data"] = pd.to_numeric(
@@ -251,8 +251,8 @@ def parse_supply_data(
         supply_data["carrier"].str.lower().isin(exogeneous_supply_list)
     ]
 
-    # Standartize year format
-    supply_data["year"] = _standartize_year(supply_data["year"])
+    # Standardize year format
+    supply_data["year"] = _standardize_year(supply_data["year"])
 
     # Make data column numeric
     supply_data["data"] = pd.to_numeric(supply_data["data"], errors="coerce").fillna(0)
@@ -327,7 +327,7 @@ def parse_electricity_demand(
     electricity_demand_data.columns = electricity_demand_data.columns.str.lower()
 
     # Standardize year format
-    electricity_demand_data["year"] = _standartize_year(electricity_demand_data["year"])
+    electricity_demand_data["year"] = _standardize_year(electricity_demand_data["year"])
 
     # Make data column numeric
     electricity_demand_data["data"] = pd.to_numeric(
@@ -408,8 +408,8 @@ def parse_storage_data(
     # Select the scenario data
     storage_data = storage_data[storage_data["scenario"].str.lower() == fes_scenario]
 
-    # Standartize year format
-    storage_data["year"] = _standartize_year(storage_data["year"])
+    # Standardize year format
+    storage_data["year"] = _standardize_year(storage_data["year"])
 
     # Make data column numeric
     storage_data["data"] = pd.to_numeric(storage_data["data"], errors="coerce").fillna(
