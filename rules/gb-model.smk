@@ -287,13 +287,14 @@ rule compose_network:
             f"costs_{config_provider('costs', 'year')(w)}.csv"
         ),
         hydro_capacities=ancient("data/hydro_capacities.csv"),
-        intermediate_data=[
+        intermediate_data=lambda wildcards: [
             resources("gb-model/transmission_availability.csv"),
-            expand(
-                resources("gb-model/fes/{fes_sheet}.csv"),
-                fes_sheet=config["fes-sheet-config"].keys(),
-            ),
-            expand(
+            *[
+                resources(f"gb-model/fes/{year}/{sheet}.csv")
+                for year, year_config in config["fes-sheet-config"].items()
+                for sheet in year_config.keys()
+            ],
+            *expand(
                 resources(
                     "gb-model/{zone}_{business_type}_generator_unavailability.csv"
                 ),
@@ -304,6 +305,11 @@ rule compose_network:
             resources("gb-model/fes_p_nom.csv"),
             resources("gb-model/interconnectors_p_nom.csv"),
             resources("gb-model/GB_generator_monthly_unavailability.csv"),
+            resources("gb-model/fes_hydrogen_demand_data.csv"),
+            resources("gb-model/fes_grid_electrolysis_capacities.csv"),
+            resources("gb-model/fes_hydrogen_supply_data.csv"),
+            resources("gb-model/fes_off_grid_electrolysis_electricity_demand.csv"),
+            resources("gb-model/fes_hydrogen_storage_data.csv"),
         ],
     output:
         network=resources("networks/composed_{clusters}.nc"),
