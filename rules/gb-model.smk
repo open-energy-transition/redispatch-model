@@ -179,8 +179,8 @@ rule process_fes_gsp_data:
         scenario=config["fes"]["gb"]["scenario"],
         year_range=config["fes"]["year_range_incl"],
     input:
-        bb1_sheet=resources("gb-model/fes/BB1.csv"),
-        bb2_sheet=resources("gb-model/fes/BB2.csv"),
+        bb1_sheet=resources("gb-model/fes/2021/BB1.csv"),
+        bb2_sheet=resources("gb-model/fes/2021/BB2.csv"),
         gsp_coordinates="data/gb-model/downloaded/gsp-coordinates.csv",
         regions=resources("gb-model/merged_shapes.geojson"),
     output:
