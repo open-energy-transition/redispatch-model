@@ -80,10 +80,7 @@ def parse_demand_inputs(
             ]
 
             # Add scenario column for Road Transport
-            if (
-                sector == "road transport"
-                and "scenario" not in demand_data[sector].columns
-            ):
+            if "scenario" not in demand_data[sector].columns:
                 demand_data[sector]["scenario"] = fes_scenario
 
             # Select scenario
