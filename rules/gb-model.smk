@@ -40,7 +40,7 @@ rule create_region_shapes:
     conda:
         "../envs/gb-model/workflow.yaml"
     script:
-        "../scripts/gb-model/create_region_shapes.py"
+        "../scripts/gb_model/create_region_shapes.py"
 
 
 # Rule to manually merge raw_region_shapes
@@ -57,7 +57,7 @@ rule manual_region_merger:
     conda:
         "../envs/gb-model/workflow.yaml"
     script:
-        "../scripts/gb-model/manual_region_merger.py"
+        "../scripts/gb_model/manual_region_merger.py"
 
 
 # Rule to retrieve generation unit unavailability data from ENTSO-E
@@ -67,7 +67,12 @@ rule retrieve_entsoe_unavailability_data:
     output:
         xml_base_dir=directory("data/gb-model/entsoe_api/{zone}/{business_type}"),
     params:
-        unavailability=config["entsoe_unavailability"],
+        start_date=config["entsoe_unavailability"]["start_date"],
+        end_date=config["entsoe_unavailability"]["end_date"],
+        bidding_zones=config["entsoe_unavailability"]["bidding_zones"],
+        business_types=config["entsoe_unavailability"]["business_types"],
+        max_request_days=config["entsoe_unavailability"]["max_request_days"],
+        api_params=config["entsoe_unavailability"]["api_params"],
     log:
         logs("retrieve_entsoe_unavailability_data_{zone}_{business_type}.log"),
     resources:
@@ -75,7 +80,7 @@ rule retrieve_entsoe_unavailability_data:
     conda:
         "../envs/gb-model/workflow.yaml"
     script:
-        "../scripts/gb-model/retrieve_entsoe_unavailability_data.py"
+        "../scripts/gb_model/retrieve_entsoe_unavailability_data.py"
 
 
 rule process_entsoe_unavailability_data:
@@ -96,7 +101,28 @@ rule process_entsoe_unavailability_data:
     conda:
         "../envs/gb-model/workflow.yaml"
     script:
-        "../scripts/gb-model/process_entsoe_unavailability_data.py"
+        "../scripts/gb_model/process_entsoe_unavailability_data.py"
+
+
+rule generator_monthly_unavailability:
+    input:
+        planned=resources("gb-model/{zone}_planned_generator_unavailability.csv"),
+        forced=resources("gb-model/{zone}_forced_generator_unavailability.csv"),
+        powerplants=resources("powerplants_s_all.csv"),
+    params:
+        carrier_mapping=config["entsoe_unavailability"]["carrier_mapping"],
+        resource_type_mapping=config["entsoe_unavailability"]["resource_type_mapping"],
+        start_date=config["entsoe_unavailability"]["start_date"],
+        end_date=config["entsoe_unavailability"]["end_date"],
+        max_unavailable_days=config["entsoe_unavailability"]["max_unavailable_days"],
+    output:
+        csv=resources("gb-model/{zone}_generator_monthly_unavailability.csv"),
+    log:
+        logs("{zone}_generator_monthly_unavailability.log"),
+    conda:
+        "../envs/gb-model/workflow.yaml"
+    script:
+        "../scripts/gb_model/generator_monthly_unavailability.py"
 
 
 rule extract_transmission_availability:
@@ -109,7 +135,7 @@ rule extract_transmission_availability:
     conda:
         "../envs/gb-model/workflow.yaml"
     script:
-        "../scripts/gb-model/extract_transmission_availability.py"
+        "../scripts/gb_model/extract_transmission_availability.py"
 
 
 rule extract_fes_workbook_sheet:
@@ -126,7 +152,7 @@ rule extract_fes_workbook_sheet:
     log:
         logs("extract_fes-{fes_year}_{fes_sheet}.log"),
     script:
-        "../scripts/gb-model/extract_fes_sheet.py"
+        "../scripts/gb_model/extract_fes_sheet.py"
 
 
 rule process_fes_eur_data:
@@ -143,7 +169,7 @@ rule process_fes_eur_data:
     log:
         logs("process_fes_eur_data.log"),
     script:
-        "../scripts/gb-model/process_fes_eur_data.py"
+        "../scripts/gb_model/process_fes_eur_data.py"
 
 
 rule process_fes_gsp_data:
@@ -162,7 +188,7 @@ rule process_fes_gsp_data:
     log:
         logs("process_fes_gsp_data.log"),
     script:
-        "../scripts/gb-model/process_fes_gsp_data.py"
+        "../scripts/gb_model/process_fes_gsp_data.py"
 
 
 rule create_powerplants_table:
@@ -180,7 +206,21 @@ rule create_powerplants_table:
     log:
         logs("create_powerplants_table.log"),
     script:
-        "../scripts/gb-model/create_powerplants_table.py"
+        "../scripts/gb_model/create_powerplants_table.py"
+
+
+rule create_interconnectors_table:
+    input:
+        regions=resources("gb-model/merged_shapes.geojson"),
+    output:
+        gsp_data=resources("gb-model/interconnectors_p_nom.csv"),
+    params:
+        interconnector_config=config["interconnectors"],
+        year_range=config["fes"]["year_range_incl"],
+    log:
+        logs("create_interconnectors_table.log"),
+    script:
+        "../scripts/gb_model/create_interconnectors_table.py"
 
 
 rule process_fes_hydrogen_data:
@@ -248,6 +288,8 @@ rule compose_network:
             ),
             resources("gb-model/merged_shapes.geojson"),
             resources("gb-model/fes_p_nom.csv"),
+            resources("gb-model/interconnectors_p_nom.csv"),
+            resources("gb-model/GB_generator_monthly_unavailability.csv"),
         ],
     output:
         network=resources("networks/composed_{clusters}.nc"),
@@ -265,7 +307,7 @@ rule compose_network:
     conda:
         "../envs/environment.yaml"
     script:
-        "../scripts/gb-model/compose_network.py"
+        "../scripts/gb_model/compose_network.py"
 
 
 rule compose_networks:

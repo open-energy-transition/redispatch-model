@@ -15,10 +15,8 @@ import pandas as pd
 import numpy as np
 from scipy.interpolate import interp1d
 
-import sys
-sys.path.insert(0, str(Path(__file__).parent))
 from scripts._helpers import configure_logging, set_scenario_config
-from _helpers import _strip_str
+from scripts.gb_model._helpers import _strip_str
 
 logger = logging.getLogger(__name__)
 
