@@ -287,14 +287,9 @@ rule compose_network:
             f"costs_{config_provider('costs', 'year')(w)}.csv"
         ),
         hydro_capacities=ancient("data/hydro_capacities.csv"),
-        intermediate_data=lambda wildcards: [
+        intermediate_data=[
             resources("gb-model/transmission_availability.csv"),
-            *[
-                resources(f"gb-model/fes/{year}/{sheet}.csv")
-                for year, year_config in config["fes-sheet-config"].items()
-                for sheet in year_config.keys()
-            ],
-            *expand(
+            expand(
                 resources(
                     "gb-model/{zone}_{business_type}_generator_unavailability.csv"
                 ),

@@ -138,7 +138,7 @@ def get_regional_distribution(df: pd.Series) -> pd.Series:
                    proportions instead of absolute values. Each row (year) sums to 1.0 across all
                    regions (columns).
     """
-    regional_distribution = df.groupby("year").apply(lambda x: x / x.sum())
+    regional_distribution = df.groupby(level="year").transform(lambda x: x / x.sum())
 
     return regional_distribution
 
@@ -214,6 +214,7 @@ def parse_supply_data(
     supply_sheets: list,
     supply_sheets_mapping: dict,
     year_range: list,
+    exogeneous_supply_list: list,
 ) -> pd.DataFrame:
     """
     Parse the hydrogen supply data to the required format.
@@ -534,6 +535,7 @@ if __name__ == "__main__":
         supply_sheets,
         supply_sheets_mapping,
         year_range,
+        exogeneous_supply_list,
     )
 
     # Save the hydrogen supply data
