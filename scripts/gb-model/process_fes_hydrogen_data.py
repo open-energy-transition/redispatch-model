@@ -12,6 +12,8 @@ import logging
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
+from scipy.interpolate import interp1d
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
@@ -45,7 +47,7 @@ def parse_demand_inputs(
 
     Returns:
         df_hydrogen_demand (pd.DataFrame): Processed hydrogen demand data with year as index
-        and sectors as columns. Data values are in TWh for all sectors.
+        and sectors as columns. Data values are in MWh for all sectors.
     """
 
     # Retrieve annual demand data from sheets
@@ -97,9 +99,11 @@ def parse_demand_inputs(
                     demand_data[sector]['carrier'].str.lower() == 'hydrogen'
                 ]
 
-            # Convert demand to TWh
+            # Convert demand to MWh
             if sector in ["industrial", "commercial"]:
-                demand_data[sector]['data'] = demand_data[sector]['data'] / 1e3  # GWh to TWh
+                demand_data[sector]['data'] = demand_data[sector]['data'] * 1e3  # GWh to MWh
+            else:
+                demand_data[sector]['data'] = demand_data[sector]['data'] * 1e6  # TWh to MWh
 
             # Define hydrogen demand dataframe
             if sector != 'other':
@@ -213,7 +217,7 @@ def parse_supply_data(
         year_range (list): Two-element list [start_year, end_year] defining the year range to include
 
     Returns:
-        pd.DataFrame: Processed hydrogen supply data with MultiIndex ['bus', 'year'] and 'data' values in original units in TWh.
+        pd.DataFrame: Processed hydrogen supply data with MultiIndex ['bus', 'year'] and 'data' values in MWh.
     """
     # Retrieve annual supply data from sheets
     for year, sheets in supply_sheets_mapping.items():
@@ -260,6 +264,9 @@ def parse_supply_data(
         fill_value=0    # Fill missing combinations with 0
     )
 
+    # Convert to MWh
+    df_hydrogen_supply = df_hydrogen_supply * 1e6  # TWh to MWh
+
     return df_hydrogen_supply
 
 
@@ -285,7 +292,7 @@ def parse_electricity_demand(
 
     Returns:
         pd.DataFrame: Processed electricity demand data with MultiIndex ['bus', 'year']
-                     and electricity demand values in TWh. Data is regionally distributed
+                     and electricity demand values in MWh. Data is regionally distributed
                      based on grid-connected electrolysis capacity patterns.
 
     Processing steps:
@@ -293,7 +300,7 @@ def parse_electricity_demand(
         2. Filter for "I&C off grid electrolysis demand" data items
         3. Standardize year format and convert data to numeric
         4. Filter by specified year range
-        5. Convert units from GWh to TWh
+        5. Convert units from GWh to MWh
         6. Calculate regional distribution based on grid electrolysis capacities
         7. Apply regional distribution to electricity demand data
     """
@@ -334,8 +341,8 @@ def parse_electricity_demand(
     # Prepare final dataframe
     df_electricity_demand = electricity_demand_data.set_index('year')["data"]
 
-    # Convert to TWh
-    df_electricity_demand = df_electricity_demand / 1e3  # GWh to TWh
+    # Convert to MWh
+    df_electricity_demand = df_electricity_demand * 1e3  # GWh to MWh
 
     # Calculate regional distribution of grid-connected electrolysis capacities
     electrolysis_distribution = get_regional_distribution(
@@ -345,7 +352,151 @@ def parse_electricity_demand(
     # Apply regional distribution to electricity demand data
     df_electricity_demand = df_electricity_demand * electrolysis_distribution
 
+    # Rename series to 'p_set'
+    df_electricity_demand.name = "p_set"
+
     return df_electricity_demand
+
+
+def parse_storage_data(
+    storage_sheets: list,
+    storage_sheets_mapping: dict,
+    fes_scenario: str,
+    year_range: list,
+    interpolation_method: str = "linear",
+) -> pd.DataFrame:
+    """
+    Parse the hydrogen storage data to the required format.
+
+    Args:
+        storage_sheets (list): List of file paths to storage sheet CSV files
+        storage_sheets_mapping (dict): Nested mapping of fes_year -> data type -> sheet_name
+        fes_scenario (str): FES scenario name to filter by (e.g., "Leading the Way")
+        year_range (list): Two-element list [start_year, end_year] defining the year range to include
+        interpolation_method (str): Method for interpolating between 5-year data points
+                                   ("linear", "s_curve", or "step"). Default is "linear".
+
+    Returns:
+        pd.DataFrame: Processed hydrogen storage data with year as index and storage types as columns.
+                     Data values are in MWh. Data is interpolated from
+                     5-year intervals to annual values using the specified interpolation method.
+
+    Processing steps:
+        1. Load storage data from CSV files based on mapping configuration
+        2. Filter data by specified FES scenario
+        3. Standardize year format and convert data to numeric
+        4. Apply interpolation to fill annual data between 5-year intervals
+        5. Filter by specified year range
+        6. Return processed DataFrame with annual storage capacity data e_nom in MWh
+    """
+    # Retrieve annual storage data from sheets
+    for year, sheets in storage_sheets_mapping.items():
+        for data_type, sheet_name in sheets.items():
+            # Find the corresponding file in the storage_sheets
+            if data_type == "storage_capacity":
+                sheet_file = next(
+                    f for f in storage_sheets if sheet_name in f
+                )
+
+    # Read the storage sheet data
+    storage_data = pd.read_csv(sheet_file)
+    storage_data = storage_data.apply(_strip_str)
+
+    # Select the scenario data
+    storage_data = storage_data[
+        storage_data["scenario"].str.lower() == fes_scenario
+    ]
+
+    # Standartize year format
+    storage_data['year'] = _standartize_year(storage_data['year'])
+
+    # Make data column numeric
+    storage_data['data'] = pd.to_numeric(
+        storage_data['data'], errors='coerce'
+    ).fillna(0)
+
+    # Perform interpolation to get annual data
+    storage_data_interpolated = interpolate_yearly_data(
+        storage_data,
+        method=interpolation_method,
+        year_column='year',
+        data_column='data'
+    )
+
+    # Filter by year range
+    storage_data_interpolated = storage_data_interpolated[
+        storage_data_interpolated['year'].between(year_range[0], year_range[1])
+    ]
+
+    # Prepare final dataframe
+    storage_data_interpolated = storage_data_interpolated.set_index('year')['data']
+    storage_data_interpolated.name = 'e_nom'
+
+    return storage_data_interpolated
+
+
+def interpolate_yearly_data(
+    df: pd.DataFrame,
+    method: str = "linear",
+    year_column: str = "year",
+    data_column: str = "data"
+) -> pd.DataFrame:
+    """
+    Interpolate data between 5-year intervals to get annual values.
+
+    Args:
+        df (pd.DataFrame): DataFrame with sparse year data (e.g., every 5 years)
+        method (str): Interpolation method - "linear", "s_curve", or "step"
+        year_column (str): Name of the year column
+        data_column (str): Name of the data column to interpolate
+
+    Returns:
+        pd.DataFrame: DataFrame with interpolated annual data
+    """
+
+    # Create full year range
+    min_year = df[year_column].min()
+    max_year = df[year_column].max()
+    full_years = np.arange(min_year, max_year + 1)
+
+    # Get the sparse data points
+    years = df[year_column].values
+    values = df[data_column].values
+
+    if method == "linear":
+        # Linear interpolation
+        f = interp1d(years, values, kind='linear', fill_value='extrapolate')
+        interpolated_values = f(full_years)
+
+    elif method == "s_curve":
+        # S-curve (sigmoid-like) interpolation using cubic spline
+        f = interp1d(years, values, kind='cubic', fill_value='extrapolate')
+        interpolated_values = f(full_years)
+
+        # Ensure non-negative values (optional)
+        interpolated_values = np.maximum(interpolated_values, 0)
+
+    elif method == "step":
+        # Step interpolation - hold previous value until next data point
+        f = interp1d(years, values, kind='previous', fill_value='extrapolate')
+        interpolated_values = f(full_years)
+
+    else:
+        raise ValueError("Method must be 'linear', 's_curve', or 'step'")
+
+    # Create new DataFrame with interpolated data
+    result_df = pd.DataFrame({
+        year_column: full_years,
+        data_column: interpolated_values
+    })
+
+    # Add other columns if they exist (like scenario)
+    for col in df.columns:
+        if col not in [year_column, data_column]:
+            # Use the first value for other columns (assuming they're constant)
+            result_df[col] = df[col].iloc[0]
+
+    return result_df
 
 
 if __name__ == "__main__":
@@ -360,6 +511,7 @@ if __name__ == "__main__":
     demand_sheets = snakemake.input.demand_sheets
     regional_gb_data_path = snakemake.input.regional_gb_data
     supply_sheets = snakemake.input.supply_sheets
+    storage_sheets = snakemake.input.storage_sheet
 
     # Load all params
     fes_scenario = snakemake.params.scenario
@@ -368,6 +520,8 @@ if __name__ == "__main__":
     other_sectors_list = snakemake.params.other_sectors_list
     supply_sheets_mapping = snakemake.params.fes_supply_sheets
     exogeneous_supply_list = snakemake.params.exogeneous_supply_list
+    storage_sheets_mapping = snakemake.params.fes_storage_sheets
+    interpolation_method = snakemake.params.interpolation_method
 
     # Parse demand data
     df_hydrogen_demand = parse_demand_inputs(
@@ -410,3 +564,15 @@ if __name__ == "__main__":
 
     # Save the electricity demand data
     df_electricity_demand.to_csv(snakemake.output.electricity_demand)
+
+    # Parse storage data
+    df_hydrogen_storage = parse_storage_data(
+        storage_sheets,
+        storage_sheets_mapping,
+        fes_scenario,
+        year_range,
+        interpolation_method,
+    )
+
+    # Save the storage data
+    df_hydrogen_storage.to_csv(snakemake.output.hydrogen_storage)

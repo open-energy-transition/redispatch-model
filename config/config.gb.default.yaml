@@ -220,6 +220,16 @@ fes-sheet-config:
       rename:
         columns: year
 
+    # Annual hydrogen storage capacity in tonnes for 2020-2050
+    FL.6:
+      usecols: "K:O"
+      skiprows: 9
+      index_col: 0
+      header: 0
+      rename:
+        index: year
+        columns: scenario
+
     BB2:
       usecols: "A:E"
       skiprows: 2
@@ -355,3 +365,8 @@ fes:
         - non-networked electrolysis
         - beccs
         - imports
+    storage:
+      storage_sheets:
+        2021:
+          storage_capacity: FL.6
+      interpolation_method: linear  # Options: linear, s_curve, step. Interpolation method for hydrogen storage capacity between FES years
