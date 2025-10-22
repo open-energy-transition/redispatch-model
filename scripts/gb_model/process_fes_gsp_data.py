@@ -16,7 +16,7 @@ import geopandas as gpd
 import pandas as pd
 
 from scripts._helpers import configure_logging, set_scenario_config
-from scripts.gb_model._helpers import strip_srt, map_points_to_regions
+from scripts.gb_model._helpers import map_points_to_regions, strip_srt
 
 logger = logging.getLogger(__name__)
 
