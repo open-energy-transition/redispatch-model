@@ -400,19 +400,19 @@ fes:
         2023:
           other: WS1
       other_sectors_list:
-        - shipping and aviation
-        - blending
-        - direct air carbon capture and storage
-        - transmission losses
+      - shipping and aviation
+      - blending
+      - direct air carbon capture and storage
+      - transmission losses
     supply:
       supply_sheets:
         2021:
           hydrogen_supply: SV.20
           electricity_demand: ED1
       exogeneous_supply_list:
-        - non-networked electrolysis
-        - beccs
-        - imports
+      - non-networked electrolysis
+      - beccs
+      - imports
     storage:
       storage_sheets:
         2021:

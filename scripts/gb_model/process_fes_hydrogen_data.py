@@ -3,16 +3,16 @@
 # SPDX-License-Identifier: MIT
 
 """
-    Hydrogen data processor.
+Hydrogen data processor.
 
-    This script processes hydrogen data from FES workbook.
+This script processes hydrogen data from FES workbook.
 """
 
 import logging
 from pathlib import Path
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from scipy.interpolate import interp1d
 
 from scripts._helpers import configure_logging, set_scenario_config
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def _standartize_year(series: pd.Series) -> pd.Series:
     """Standartize year format in a pandas Series."""
-    if series.dtype == 'object' and '-' in str(series.iloc[0]):
+    if series.dtype == "object" and "-" in str(series.iloc[0]):
         series = pd.to_datetime(series).dt.year
     return series.astype(int) if series.dtype == "object" else series
 
@@ -57,8 +57,7 @@ def parse_demand_inputs(
             # Find the corresponding file in the demand_sheets
             # Look for files that contain both the year and sheet_name
             sheet_file = next(
-                f for f in demand_sheets
-                if sheet_name in f and str(year) in f
+                f for f in demand_sheets if sheet_name in f and str(year) in f
             )
 
             demand_data[sector] = pd.read_csv(sheet_file)
@@ -70,51 +69,64 @@ def parse_demand_inputs(
             demand_data[sector].columns = demand_data[sector].columns.str.lower()
 
             # Standartize year format
-            demand_data[sector]['year'] = _standartize_year(demand_data[sector]['year'])
+            demand_data[sector]["year"] = _standartize_year(demand_data[sector]["year"])
 
             # Make data column numeric
-            demand_data[sector]['data'] = pd.to_numeric(
-                demand_data[sector]['data'], errors='coerce'
+            demand_data[sector]["data"] = pd.to_numeric(
+                demand_data[sector]["data"], errors="coerce"
             ).fillna(0)
 
             # Filter by year range
             demand_data[sector] = demand_data[sector][
-                demand_data[sector]['year'].between(year_range[0], year_range[1])
+                demand_data[sector]["year"].between(year_range[0], year_range[1])
             ]
 
             # Add scenario column for Road Transport
-            if sector == 'road transport' and 'scenario' not in demand_data[sector].columns:
-                demand_data[sector]['scenario'] = fes_scenario
+            if (
+                sector == "road transport"
+                and "scenario" not in demand_data[sector].columns
+            ):
+                demand_data[sector]["scenario"] = fes_scenario
 
             # Select scenario
             demand_data[sector] = demand_data[sector][
-                demand_data[sector]['scenario'].str.lower() == fes_scenario
+                demand_data[sector]["scenario"].str.lower() == fes_scenario
             ]
 
             # Select hydrogen demand for road transport
-            if sector == 'road transport':
+            if sector == "road transport":
                 demand_data[sector] = demand_data[sector][
-                    demand_data[sector]['carrier'].str.lower() == 'hydrogen'
+                    demand_data[sector]["carrier"].str.lower() == "hydrogen"
                 ]
 
             # Convert demand to MWh
             if sector in ["industrial", "commercial"]:
-                demand_data[sector]['data'] = demand_data[sector]['data'] * 1e3  # GWh to MWh
+                demand_data[sector]["data"] = (
+                    demand_data[sector]["data"] * 1e3
+                )  # GWh to MWh
             else:
-                demand_data[sector]['data'] = demand_data[sector]['data'] * 1e6  # TWh to MWh
+                demand_data[sector]["data"] = (
+                    demand_data[sector]["data"] * 1e6
+                )  # TWh to MWh
 
             # Define hydrogen demand dataframe
-            if sector != 'other':
-                df_hydrogen_demand[sector] = demand_data[sector][['year', 'data']].set_index('year')
-            elif sector == 'other':
+            if sector != "other":
+                df_hydrogen_demand[sector] = demand_data[sector][
+                    ["year", "data"]
+                ].set_index("year")
+            elif sector == "other":
                 df_sector = demand_data[sector]
 
                 for sub_sector in other_sectors_list:
-                    df_hydrogen_demand[sub_sector] = df_sector[
-                        (df_sector["fuel type"].str.lower() == "hydrogen") &
-                        (df_sector["category lookup"].str.lower() == sub_sector) &
-                        (df_sector["category"].str.lower() == "demand")
-                    ].groupby("year")["data"].sum()
+                    df_hydrogen_demand[sub_sector] = (
+                        df_sector[
+                            (df_sector["fuel type"].str.lower() == "hydrogen")
+                            & (df_sector["category lookup"].str.lower() == sub_sector)
+                            & (df_sector["category"].str.lower() == "demand")
+                        ]
+                        .groupby("year")["data"]
+                        .sum()
+                    )
 
     return df_hydrogen_demand
 
@@ -146,7 +158,7 @@ def parse_grid_electrolysis_data(
     """
     Parse and process grid-connected hydrogen electrolysis supply data.
 
-    This function processes regional hydrogen electrolysis capacity data, calculates 
+    This function processes regional hydrogen electrolysis capacity data, calculates
     regional distributions, and redistributes unmapped capacities based on existing
     regional patterns.
 
@@ -155,9 +167,9 @@ def parse_grid_electrolysis_data(
                                    hydrogen electrolysis capacity data by region and year.
 
     Returns:
-        pd.DataFrame: Processed grid-connected electrolysis capacities with MultiIndex 
+        pd.DataFrame: Processed grid-connected electrolysis capacities with MultiIndex
                      ['bus', 'year'] and 'data' values in original units in MW.
-                     Includes both originally mapped capacities and redistributed 
+                     Includes both originally mapped capacities and redistributed
                      unmapped capacities.
 
     Processing steps:
@@ -177,9 +189,9 @@ def parse_grid_electrolysis_data(
     ]
 
     # Calculate regional grid-connected electrolysis capacities
-    regional_grid_electrolysis_capacities = electrolysis_data.groupby(
-        ["bus", "year"]
-    )["data"].sum()
+    regional_grid_electrolysis_capacities = electrolysis_data.groupby(["bus", "year"])[
+        "data"
+    ].sum()
 
     # Calculate regional distribution of grid-connected electrolysis capacities
     electrolysis_distribution = get_regional_distribution(
@@ -187,13 +199,19 @@ def parse_grid_electrolysis_data(
     )
 
     # Map unmapped grid-connected electrolysis data
-    unmapped_grid_electrolysis_capacities = electrolysis_data[
-        electrolysis_data["bus"].isnull()
-    ].groupby("year")["data"].sum()
-    unmapped_grid_electrolysis_capacities = unmapped_grid_electrolysis_capacities * electrolysis_distribution
+    unmapped_grid_electrolysis_capacities = (
+        electrolysis_data[electrolysis_data["bus"].isnull()]
+        .groupby("year")["data"]
+        .sum()
+    )
+    unmapped_grid_electrolysis_capacities = (
+        unmapped_grid_electrolysis_capacities * electrolysis_distribution
+    )
 
     # Combine mapped and unmapped grid-connected electrolysis data
-    grid_electrolysis_capacities = regional_grid_electrolysis_capacities + unmapped_grid_electrolysis_capacities
+    grid_electrolysis_capacities = (
+        regional_grid_electrolysis_capacities + unmapped_grid_electrolysis_capacities
+    )
 
     # Rename series to 'p_nom'
     grid_electrolysis_capacities.name = "p_nom"
@@ -222,9 +240,7 @@ def parse_supply_data(
         for data_type, sheet_name in sheets.items():
             # Find the corresponding file in the supply_sheets
             if data_type == "hydrogen_supply":
-                sheet_file = next(
-                    f for f in supply_sheets if sheet_name in f
-                )
+                sheet_file = next(f for f in supply_sheets if sheet_name in f)
 
     # Read the supply sheet data
     supply_data = pd.read_csv(sheet_file)
@@ -232,34 +248,28 @@ def parse_supply_data(
 
     # Select exogeneous hydrogen supply data
     supply_data = supply_data[
-        supply_data["carrier"].str.lower().isin(
-            exogeneous_supply_list
-        )
+        supply_data["carrier"].str.lower().isin(exogeneous_supply_list)
     ]
 
     # Standartize year format
-    supply_data['year'] = _standartize_year(supply_data['year'])
+    supply_data["year"] = _standartize_year(supply_data["year"])
 
     # Make data column numeric
-    supply_data['data'] = pd.to_numeric(
-        supply_data['data'], errors='coerce'
-    ).fillna(0)
+    supply_data["data"] = pd.to_numeric(supply_data["data"], errors="coerce").fillna(0)
 
     # Filter by year range
-    supply_data = supply_data[
-        supply_data['year'].between(year_range[0], year_range[1])
-    ]
+    supply_data = supply_data[supply_data["year"].between(year_range[0], year_range[1])]
 
     # Use lowercase for carrier names
-    supply_data['carrier'] = supply_data['carrier'].str.lower()
+    supply_data["carrier"] = supply_data["carrier"].str.lower()
 
     # Pivot the data: year as index, carriers as columns, data as values
     df_hydrogen_supply = supply_data.pivot_table(
-        index='year',
-        columns='carrier',
-        values='data',
-        aggfunc='sum',  # Sum if there are duplicates
-        fill_value=0    # Fill missing combinations with 0
+        index="year",
+        columns="carrier",
+        values="data",
+        aggfunc="sum",  # Sum if there are duplicates
+        fill_value=0,  # Fill missing combinations with 0
     )
 
     # Convert to MWh
@@ -307,9 +317,7 @@ def parse_electricity_demand(
         for data_type, sheet_name in sheets.items():
             # Find the corresponding file in the supply_sheets
             if data_type == "electricity_demand":
-                sheet_file = next(
-                    f for f in supply_sheets if sheet_name in f
-                )
+                sheet_file = next(f for f in supply_sheets if sheet_name in f)
 
     # Read the electricity demand sheet data
     electricity_demand_data = pd.read_csv(sheet_file)
@@ -319,33 +327,32 @@ def parse_electricity_demand(
     electricity_demand_data.columns = electricity_demand_data.columns.str.lower()
 
     # Standardize year format
-    electricity_demand_data['year'] = _standartize_year(electricity_demand_data['year'])
+    electricity_demand_data["year"] = _standartize_year(electricity_demand_data["year"])
 
     # Make data column numeric
-    electricity_demand_data['data'] = pd.to_numeric(
-        electricity_demand_data['data'], errors='coerce'
+    electricity_demand_data["data"] = pd.to_numeric(
+        electricity_demand_data["data"], errors="coerce"
     ).fillna(0)
 
     # Filter by year range
     electricity_demand_data = electricity_demand_data[
-        electricity_demand_data['year'].between(year_range[0], year_range[1])
+        electricity_demand_data["year"].between(year_range[0], year_range[1])
     ]
 
     # Select non-grid electrolysis electricity demand
     electricity_demand_data = electricity_demand_data[
-        electricity_demand_data["data item"].str.lower() == "i&c off grid electrolysis demand (lw only)"
+        electricity_demand_data["data item"].str.lower()
+        == "i&c off grid electrolysis demand (lw only)"
     ]
 
     # Prepare final dataframe
-    df_electricity_demand = electricity_demand_data.set_index('year')["data"]
+    df_electricity_demand = electricity_demand_data.set_index("year")["data"]
 
     # Convert to MWh
     df_electricity_demand = df_electricity_demand * 1e3  # GWh to MWh
 
     # Calculate regional distribution of grid-connected electrolysis capacities
-    electrolysis_distribution = get_regional_distribution(
-        grid_electrolysis_capacities
-    )
+    electrolysis_distribution = get_regional_distribution(grid_electrolysis_capacities)
 
     # Apply regional distribution to electricity demand data
     df_electricity_demand = df_electricity_demand * electrolysis_distribution
@@ -392,43 +399,39 @@ def parse_storage_data(
         for data_type, sheet_name in sheets.items():
             # Find the corresponding file in the storage_sheets
             if data_type == "storage_capacity":
-                sheet_file = next(
-                    f for f in storage_sheets if sheet_name in f
-                )
+                sheet_file = next(f for f in storage_sheets if sheet_name in f)
 
     # Read the storage sheet data
     storage_data = pd.read_csv(sheet_file)
     storage_data = storage_data.apply(_strip_str)
 
     # Select the scenario data
-    storage_data = storage_data[
-        storage_data["scenario"].str.lower() == fes_scenario
-    ]
+    storage_data = storage_data[storage_data["scenario"].str.lower() == fes_scenario]
 
     # Standartize year format
-    storage_data['year'] = _standartize_year(storage_data['year'])
+    storage_data["year"] = _standartize_year(storage_data["year"])
 
     # Make data column numeric
-    storage_data['data'] = pd.to_numeric(
-        storage_data['data'], errors='coerce'
-    ).fillna(0)
+    storage_data["data"] = pd.to_numeric(storage_data["data"], errors="coerce").fillna(
+        0
+    )
 
     # Perform interpolation to get annual data
     storage_data_interpolated = interpolate_yearly_data(
         storage_data,
         method=interpolation_method,
-        year_column='year',
-        data_column='data'
+        year_column="year",
+        data_column="data",
     )
 
     # Filter by year range
     storage_data_interpolated = storage_data_interpolated[
-        storage_data_interpolated['year'].between(year_range[0], year_range[1])
+        storage_data_interpolated["year"].between(year_range[0], year_range[1])
     ]
 
     # Prepare final dataframe
-    storage_data_interpolated = storage_data_interpolated.set_index('year')['data']
-    storage_data_interpolated.name = 'e_nom'
+    storage_data_interpolated = storage_data_interpolated.set_index("year")["data"]
+    storage_data_interpolated.name = "e_nom"
 
     return storage_data_interpolated
 
@@ -437,7 +440,7 @@ def interpolate_yearly_data(
     df: pd.DataFrame,
     method: str = "linear",
     year_column: str = "year",
-    data_column: str = "data"
+    data_column: str = "data",
 ) -> pd.DataFrame:
     """
     Interpolate data between 5-year intervals to get annual values.
@@ -463,12 +466,12 @@ def interpolate_yearly_data(
 
     if method == "linear":
         # Linear interpolation
-        f = interp1d(years, values, kind='linear', fill_value='extrapolate')
+        f = interp1d(years, values, kind="linear", fill_value="extrapolate")
         interpolated_values = f(full_years)
 
     elif method == "s_curve":
         # S-curve (sigmoid-like) interpolation using cubic spline
-        f = interp1d(years, values, kind='cubic', fill_value='extrapolate')
+        f = interp1d(years, values, kind="cubic", fill_value="extrapolate")
         interpolated_values = f(full_years)
 
         # Ensure non-negative values (optional)
@@ -476,17 +479,16 @@ def interpolate_yearly_data(
 
     elif method == "step":
         # Step interpolation - hold previous value until next data point
-        f = interp1d(years, values, kind='previous', fill_value='extrapolate')
+        f = interp1d(years, values, kind="previous", fill_value="extrapolate")
         interpolated_values = f(full_years)
 
     else:
         raise ValueError("Method must be 'linear', 's_curve', or 'step'")
 
     # Create new DataFrame with interpolated data
-    result_df = pd.DataFrame({
-        year_column: full_years,
-        data_column: interpolated_values
-    })
+    result_df = pd.DataFrame(
+        {year_column: full_years, data_column: interpolated_values}
+    )
 
     # Add other columns if they exist (like scenario)
     for col in df.columns:
@@ -538,9 +540,7 @@ if __name__ == "__main__":
     )
 
     # Save the grid-connected electrolysis capacities
-    grid_electrolysis_capacities.to_csv(
-        snakemake.output.grid_electrolysis_capacities
-    )
+    grid_electrolysis_capacities.to_csv(snakemake.output.grid_electrolysis_capacities)
 
     # Parse hydrogen supply data
     df_hydrogen_supply = parse_supply_data(
