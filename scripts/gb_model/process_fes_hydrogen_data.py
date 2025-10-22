@@ -421,6 +421,9 @@ def parse_storage_data(
     storage_data_interpolated = storage_data_interpolated.set_index("year")["data"]
     storage_data_interpolated.name = "e_nom"
 
+    # Convert to MWh
+    storage_data_interpolated = storage_data_interpolated * 1e6  # TWh to MWh
+
     return storage_data_interpolated
 
 
