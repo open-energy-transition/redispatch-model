@@ -16,7 +16,7 @@ import pandas as pd
 from scipy.interpolate import interp1d
 
 from scripts._helpers import configure_logging, set_scenario_config
-from scripts.gb_model._helpers import _strip_str
+from scripts.gb_model._helpers import strip_srt
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ def parse_demand_inputs(
             demand_data[sector] = pd.read_csv(sheet_file)
 
             # Remove whitespace from string columns
-            demand_data[sector] = demand_data[sector].apply(_strip_str)
+            demand_data[sector] = demand_data[sector].apply(strip_srt)
 
             # Make all column names lowercase
             demand_data[sector].columns = demand_data[sector].columns.str.lower()
@@ -244,7 +244,7 @@ def parse_supply_data(
 
     # Read the supply sheet data
     supply_data = pd.read_csv(sheet_file)
-    supply_data = supply_data.apply(_strip_str)
+    supply_data = supply_data.apply(strip_srt)
 
     # Select exogeneous hydrogen supply data
     supply_data = supply_data[
@@ -321,7 +321,7 @@ def parse_electricity_demand(
 
     # Read the electricity demand sheet data
     electricity_demand_data = pd.read_csv(sheet_file)
-    electricity_demand_data = electricity_demand_data.apply(_strip_str)
+    electricity_demand_data = electricity_demand_data.apply(strip_srt)
 
     # Make columns lowercase
     electricity_demand_data.columns = electricity_demand_data.columns.str.lower()
@@ -403,7 +403,7 @@ def parse_storage_data(
 
     # Read the storage sheet data
     storage_data = pd.read_csv(sheet_file)
-    storage_data = storage_data.apply(_strip_str)
+    storage_data = storage_data.apply(strip_srt)
 
     # Select the scenario data
     storage_data = storage_data[storage_data["scenario"].str.lower() == fes_scenario]

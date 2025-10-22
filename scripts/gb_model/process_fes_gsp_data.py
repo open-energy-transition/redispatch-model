@@ -16,7 +16,7 @@ import geopandas as gpd
 import pandas as pd
 
 from scripts._helpers import configure_logging, set_scenario_config
-from scripts.gb_model._helpers import _strip_str, map_points_to_regions
+from scripts.gb_model._helpers import strip_srt, map_points_to_regions
 
 logger = logging.getLogger(__name__)
 
@@ -55,11 +55,11 @@ def parse_inputs(
         .reset_index()
         .set_index("Building Block ID Number")
         .drop("level_0", axis=1)
-        .apply(_strip_str)
+        .apply(strip_srt)
     )
 
     df_bb1 = pd.read_csv(bb1_path)
-    df_bb1 = df_bb1.apply(_strip_str)
+    df_bb1 = df_bb1.apply(strip_srt)
     df_bb1_scenario = df_bb1[
         (df_bb1["FES Scenario"].str.lower() == fes_scenario)
         & (df_bb1["year"].isin(range(year_range[0], year_range[1] + 1)))
@@ -88,7 +88,7 @@ def parse_inputs(
     )
 
     df_gsp_coordinates = pd.read_csv(gsp_coordinates_path)
-    df_gsp_coordinates = df_gsp_coordinates.apply(_strip_str)
+    df_gsp_coordinates = df_gsp_coordinates.apply(strip_srt)
 
     # Note
     # The GSP's "East Claydon" and "Ferrybridge B" have duplicates

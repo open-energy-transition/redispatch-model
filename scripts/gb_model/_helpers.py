@@ -25,6 +25,6 @@ def map_points_to_regions(
     return regions
 
 
-def _strip_str(series: pd.Series) -> pd.Series:
+def strip_srt(series: pd.Series) -> pd.Series:
     """Strip whitespace from strings in a pandas Series."""
     return series.str.strip() if series.dtype == "object" else series
