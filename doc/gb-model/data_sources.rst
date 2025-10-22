@@ -24,6 +24,18 @@ Tables from the workbook we use are:
 - BB1: Building Block Data
 - BB2: Building Block Metadata
 - SV.34: Installed BECCS generation capacity (GW)
+- CV.10: Annual hydrogen demand for home heating
+- CV.33: Annual energy demand for Road Transport Leading the Way
+- CV.53: Annual hydrogen demand for the industrial sector
+- CV.54: Annual hydrogen demand for the commercial sector
+- SV.20: Leading the Way Hydrogen supply (TWh)
+- ED1: Electricity demand summary
+- FL.6: Hydrogen Storage Capacity Requirements
+
+In addition, we use FES 2023 to detailed annual hydrogen demand for other sectors.
+Tables from the workbook we use are:
+
+- WS1: Whole System & Gas Supply
 
 -----------------
 GSP coordinates
@@ -57,3 +69,8 @@ We group these outages into PyPSA-Eur generator types ("carriers") and use this 
 We derive total capacity from the base PyPSA-Eur powerplant dataset.
 We finally collapse this multi-year, daily availability profile into a single monthly profile by calculating a monthly grouped average availability.
 For instance, if there is a 80% availability in the first half of June for only one of the five assessed historical years, the final June availability will be 98%.
+
+-------------
+Hydrogen data
+-------------
+All hydrogen related data such as demand, supply, storage, and generation capacities are sourced from the FES workbooks as detailed above.

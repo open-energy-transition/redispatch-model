@@ -230,16 +230,6 @@ fes-sheet-config:
         index: carrier
         columns: year
 
-    # Annual H2 demand in TWh for 2050 only
-    SV.12:
-      usecols: "M:Q"
-      skiprows: 5
-      index_col: 0
-      header: 0
-      rename:
-        index: H2_demand
-        columns: scenario
-
     # Hourly dispatch profile for ASHP and H2 boilers in GWh for 1 day
     CV.21:
       usecols: "K:M"
