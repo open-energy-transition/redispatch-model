@@ -275,7 +275,7 @@ rule process_fes_hydrogen_data:
     log:
         logs("process_fes_hydrogen_data.log"),
     script:
-        "../scripts/gb-model/process_fes_hydrogen_data.py"
+        "../scripts/gb_model/process_fes_hydrogen_data.py"
 
 
 rule compose_network:
