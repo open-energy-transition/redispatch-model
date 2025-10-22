@@ -429,9 +429,9 @@ def parse_storage_data(
 
 def interpolate_yearly_data(
     df: pd.DataFrame,
-    method: str = "linear",
-    year_column: str = "year",
-    data_column: str = "data",
+    method: str,
+    year_column: str,
+    data_column: str,
 ) -> pd.DataFrame:
     """
     Interpolate data between 5-year intervals to get annual values.
