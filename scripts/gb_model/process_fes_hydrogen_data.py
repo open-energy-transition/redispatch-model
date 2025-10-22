@@ -141,11 +141,7 @@ def get_regional_distribution(df: pd.Series) -> pd.Series:
                    proportions instead of absolute values. Each row (year) sums to 1.0 across all
                    regions (columns).
     """
-    # Calculate totals per year
-    yearly_totals = df.groupby("year").sum()
-
-    # Calculate regional distribution
-    regional_distribution = df / yearly_totals
+    regional_distribution = df.groupby("year").apply(lambda x: x / x.sum())
 
     return regional_distribution
 
