@@ -7,6 +7,7 @@ import logging
 
 import geopandas as gpd
 import pandas as pd
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -28,3 +29,11 @@ def map_points_to_regions(
 def strip_srt(series: pd.Series) -> pd.Series:
     """Strip whitespace from strings in a pandas Series."""
     return series.str.strip() if series.dtype == "object" else series
+
+
+def to_numeric(series: pd.Series) -> pd.Series:
+    """Convert a pandas Series to numeric, replacing - with 0."""
+    series = series.astype(str).str.strip()
+    series = series.replace("-", np.nan)
+    series = pd.to_numeric(series).fillna(0)
+    return series

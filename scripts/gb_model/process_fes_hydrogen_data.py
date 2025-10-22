@@ -16,7 +16,7 @@ import pandas as pd
 from scipy.interpolate import interp1d
 
 from scripts._helpers import configure_logging, set_scenario_config
-from scripts.gb_model._helpers import strip_srt
+from scripts.gb_model._helpers import strip_srt, to_numeric
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +72,7 @@ def parse_demand_inputs(
             demand_data[sector]["year"] = _standardize_year(demand_data[sector]["year"])
 
             # Make data column numeric
-            demand_data[sector]["data"] = pd.to_numeric(
-                demand_data[sector]["data"], errors="coerce"
-            ).fillna(0)
+            demand_data[sector]["data"] = to_numeric(demand_data[sector]["data"])
 
             # Filter by year range
             demand_data[sector] = demand_data[sector][
@@ -255,7 +253,7 @@ def parse_supply_data(
     supply_data["year"] = _standardize_year(supply_data["year"])
 
     # Make data column numeric
-    supply_data["data"] = pd.to_numeric(supply_data["data"], errors="coerce").fillna(0)
+    supply_data["data"] = to_numeric(supply_data["data"])
 
     # Filter by year range
     supply_data = supply_data[supply_data["year"].between(year_range[0], year_range[1])]
@@ -330,9 +328,7 @@ def parse_electricity_demand(
     electricity_demand_data["year"] = _standardize_year(electricity_demand_data["year"])
 
     # Make data column numeric
-    electricity_demand_data["data"] = pd.to_numeric(
-        electricity_demand_data["data"], errors="coerce"
-    ).fillna(0)
+    electricity_demand_data["data"] = to_numeric(electricity_demand_data["data"])
 
     # Filter by year range
     electricity_demand_data = electricity_demand_data[
@@ -412,9 +408,7 @@ def parse_storage_data(
     storage_data["year"] = _standardize_year(storage_data["year"])
 
     # Make data column numeric
-    storage_data["data"] = pd.to_numeric(storage_data["data"], errors="coerce").fillna(
-        0
-    )
+    storage_data["data"] = to_numeric(storage_data["data"])
 
     # Perform interpolation to get annual data
     storage_data_interpolated = interpolate_yearly_data(
