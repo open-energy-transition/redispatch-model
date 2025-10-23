@@ -14,7 +14,7 @@ from pathlib import Path
 import pandas as pd
 
 from scripts._helpers import configure_logging, set_scenario_config
-from scripts.gb_model._helpers import get_regional_distribution, pre_format
+from scripts.gb_model._helpers import pre_format
 
 logger = logging.getLogger(__name__)
 
