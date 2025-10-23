@@ -12,6 +12,7 @@ Release Notes
 Upcoming Release
 ================
 
+* Tabulated hydrogen related data including demand, supply, storage, and generation capacities (#73).
 * Tabulated interconnector capacities between GB regions and neighbouring countries (#10).
 * Tabulated monthly GB powerplant fractional availability profiles (#71).
 * Remove unnecessary output in `compose_networks` rule that causes error (#2)
