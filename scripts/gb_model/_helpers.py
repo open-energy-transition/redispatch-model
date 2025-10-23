@@ -18,7 +18,9 @@ def map_points_to_regions(
     crs: str = "EPSG:4326",
 ) -> pd.DataFrame:
     points = gpd.GeoDataFrame(
-        geometry=gpd.points_from_xy(df[lon_col], df[lat_col]), crs=crs
+        geometry=gpd.points_from_xy(df[lon_col], df[lat_col]), crs=crs, index=df.index
     ).to_crs(gdf_regions.crs)
-    regions = gpd.sjoin(points, gdf_regions, how="left", predicate="intersects")["name"]
+    regions = gpd.sjoin(points, gdf_regions, how="left", predicate="intersects").drop(
+        columns="geometry"
+    )
     return regions
