@@ -280,18 +280,40 @@ rule create_hydrogen_supply_table:
             ].items()
             for sheet in sheets.values()
         ],
-        grid_electrolysis_capacities=resources(
-            "gb-model/fes_grid_electrolysis_capacities.csv"
-        ),
     output:
         hydrogen_supply=resources("gb-model/fes_hydrogen_supply.csv"),
-        electricity_demand=resources(
-            "gb-model/fes_off_grid_electrolysis_electricity_demand.csv"
-        ),
     log:
         logs("create_hydrogen_supply_table.log"),
     script:
         "../scripts/gb_model/create_hydrogen_supply_table.py"
+
+
+rule create_off_grid_electrolysis_demand:
+    message:
+        "Process electricity demand of off-grid electrolysis from FES workbook into CSV format"
+    params:
+        scenario=config["fes"]["gb"]["scenario"],
+        year_range=config["fes"]["year_range_incl"],
+        fes_supply_sheets=config["fes"]["hydrogen"]["supply"]["supply_sheets"],
+    input:
+        supply_sheets=lambda wildcards: [
+            resources(f"gb-model/fes/{year}/{sheet}.csv")
+            for year, sheets in config["fes"]["hydrogen"]["supply"][
+                "supply_sheets"
+            ].items()
+            for sheet in sheets.values()
+        ],
+        grid_electrolysis_capacities=resources(
+            "gb-model/fes_grid_electrolysis_capacities.csv"
+        ),
+    output:
+        electricity_demand=resources(
+            "gb-model/fes_off_grid_electrolysis_electricity_demand.csv"
+        ),
+    log:
+        logs("create_off_grid_electrolysis_demand.log"),
+    script:
+        "../scripts/gb_model/create_off_grid_electrolysis_demand.py"
 
 
 rule create_hydrogen_storage_table:
