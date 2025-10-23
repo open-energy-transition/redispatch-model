@@ -223,24 +223,15 @@ rule create_interconnectors_table:
         "../scripts/gb_model/create_interconnectors_table.py"
 
 
-rule process_fes_hydrogen_data:
+rule create_hydrogen_demand_table:
     message:
-        "Process hydrogen data from FES workbook"
+        "Process hydrogen demand data from FES workbook into CSV format"
     params:
         scenario=config["fes"]["gb"]["scenario"],
         year_range=config["fes"]["year_range_incl"],
         fes_demand_sheets=config["fes"]["hydrogen"]["demand"]["annual_demand_sheets"],
         other_sectors_list=config["fes"]["hydrogen"]["demand"]["other_sectors_list"],
-        fes_supply_sheets=config["fes"]["hydrogen"]["supply"]["supply_sheets"],
-        exogeneous_supply_list=config["fes"]["hydrogen"]["supply"][
-            "exogeneous_supply_list"
-        ],
-        fes_storage_sheets=config["fes"]["hydrogen"]["storage"]["storage_sheets"],
-        interpolation_method=config["fes"]["hydrogen"]["storage"][
-            "interpolation_method"
-        ],
     input:
-        regional_gb_data=resources("gb-model/regional_gb_data.csv"),
         demand_sheets=lambda wildcards: [
             resources(f"gb-model/fes/{year}/{sheet}.csv")
             for year, sheets in config["fes"]["hydrogen"]["demand"][
@@ -248,6 +239,40 @@ rule process_fes_hydrogen_data:
             ].items()
             for sheet in sheets.values()
         ],
+    output:
+        hydrogen_demand=resources("gb-model/fes_hydrogen_demand.csv"),
+    log:
+        logs("create_hydrogen_demand_table.log"),
+    script:
+        "../scripts/gb_model/create_hydrogen_demand_table.py"
+
+
+rule create_grid_electrolysis_table:
+    message:
+        "Process hydrogen electrolysis data from FES workbook into CSV format"
+    input:
+        regional_gb_data=resources("gb-model/regional_gb_data.csv"),
+    output:
+        grid_electrolysis_capacities=resources(
+            "gb-model/fes_grid_electrolysis_capacities.csv"
+        ),
+    log:
+        logs("create_grid_electrolysis_table.log"),
+    script:
+        "../scripts/gb_model/create_grid_electrolysis_table.py"
+
+
+rule create_hydrogen_supply_table:
+    message:
+        "Process hydrogen supply data from FES workbook into CSV format"
+    params:
+        scenario=config["fes"]["gb"]["scenario"],
+        year_range=config["fes"]["year_range_incl"],
+        fes_supply_sheets=config["fes"]["hydrogen"]["supply"]["supply_sheets"],
+        exogeneous_supply_list=config["fes"]["hydrogen"]["supply"][
+            "exogeneous_supply_list"
+        ],
+    input:
         supply_sheets=lambda wildcards: [
             resources(f"gb-model/fes/{year}/{sheet}.csv")
             for year, sheets in config["fes"]["hydrogen"]["supply"][
@@ -255,6 +280,31 @@ rule process_fes_hydrogen_data:
             ].items()
             for sheet in sheets.values()
         ],
+        grid_electrolysis_capacities=resources(
+            "gb-model/fes_grid_electrolysis_capacities.csv"
+        ),
+    output:
+        hydrogen_supply=resources("gb-model/fes_hydrogen_supply.csv"),
+        electricity_demand=resources(
+            "gb-model/fes_off_grid_electrolysis_electricity_demand.csv"
+        ),
+    log:
+        logs("create_hydrogen_supply_table.log"),
+    script:
+        "../scripts/gb_model/create_hydrogen_supply_table.py"
+
+
+rule create_hydrogen_storage_table:
+    message:
+        "Process hydrogen storage data from FES workbook into CSV format"
+    params:
+        scenario=config["fes"]["gb"]["scenario"],
+        year_range=config["fes"]["year_range_incl"],
+        fes_storage_sheets=config["fes"]["hydrogen"]["storage"]["storage_sheets"],
+        interpolation_method=config["fes"]["hydrogen"]["storage"][
+            "interpolation_method"
+        ],
+    input:
         storage_sheet=lambda wildcards: [
             resources(f"gb-model/fes/{year}/{sheet}.csv")
             for year, sheets in config["fes"]["hydrogen"]["storage"][
@@ -263,19 +313,11 @@ rule process_fes_hydrogen_data:
             for sheet in sheets.values()
         ],
     output:
-        hydrogen_demand=resources("gb-model/fes_hydrogen_demand_data.csv"),
-        grid_electrolysis_capacities=resources(
-            "gb-model/fes_grid_electrolysis_capacities.csv"
-        ),
-        hydrogen_supply=resources("gb-model/fes_hydrogen_supply_data.csv"),
-        electricity_demand=resources(
-            "gb-model/fes_off_grid_electrolysis_electricity_demand.csv"
-        ),
-        hydrogen_storage=resources("gb-model/fes_hydrogen_storage_data.csv"),
+        hydrogen_storage=resources("gb-model/fes_hydrogen_storage.csv"),
     log:
-        logs("process_fes_hydrogen_data.log"),
+        logs("create_hydrogen_storage_table.log"),
     script:
-        "../scripts/gb_model/process_fes_hydrogen_data.py"
+        "../scripts/gb_model/create_hydrogen_storage_table.py"
 
 
 rule compose_network:
@@ -300,11 +342,11 @@ rule compose_network:
             resources("gb-model/fes_p_nom.csv"),
             resources("gb-model/interconnectors_p_nom.csv"),
             resources("gb-model/GB_generator_monthly_unavailability.csv"),
-            resources("gb-model/fes_hydrogen_demand_data.csv"),
+            resources("gb-model/fes_hydrogen_demand.csv"),
             resources("gb-model/fes_grid_electrolysis_capacities.csv"),
-            resources("gb-model/fes_hydrogen_supply_data.csv"),
+            resources("gb-model/fes_hydrogen_supply.csv"),
             resources("gb-model/fes_off_grid_electrolysis_electricity_demand.csv"),
-            resources("gb-model/fes_hydrogen_storage_data.csv"),
+            resources("gb-model/fes_hydrogen_storage.csv"),
         ],
     output:
         network=resources("networks/composed_{clusters}.nc"),
